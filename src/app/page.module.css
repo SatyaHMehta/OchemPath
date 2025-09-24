@@ -1,0 +1,30 @@
+.container {
+    display: flex;
+    align-items: center;
+    gap: 50px;
+}
+
+.item {
+    display: flex;
+    flex-direction: column;
+    flex:1;
+    gap: 30px;
+}
+
+.title {
+    font-weight: bold;
+    font-size: 70px;
+    background: linear-gradient(to bottom, #8DB946, #476e61, #038697);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.description {
+    font-size: 22px;
+}
+
+.logo {
+    height: 500px;
+    width: fit-content;
+}
+

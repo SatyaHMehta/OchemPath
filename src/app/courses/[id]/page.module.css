@@ -1,0 +1,103 @@
+.container {
+  padding: 28px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.header {
+  display:flex;
+  gap:20px;
+  align-items:center;
+}
+
+.logo {
+  width:120px;
+  height:120px;
+  position:relative;
+  border-radius:8px;
+  overflow:hidden;
+  background: rgba(255,255,255,0.03);
+}
+
+.meta {
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.title {
+  font-size:24px;
+  color:#fff;
+}
+
+.desc {
+  color:#ccc;
+  max-width:800px;
+}
+
+.back {
+  color:#9dd1ff;
+  font-size:14px;
+}
+
+.chapters {
+  display:flex;
+  flex-direction:column;
+  gap:24px;
+}
+
+.chapterTitle {
+  font-size:20px;
+  color:#eee;
+}
+
+.videos {
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap:16px;
+}
+
+.videoCard {
+  background: rgba(255,255,255,0.02);
+  padding:12px;
+  border-radius:8px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.player {
+  position:relative;
+  padding-top:56.25%; /* 16:9 */
+  width:100%;
+}
+
+.player iframe {
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  border:0;
+}
+
+.videoTitle {
+  font-weight:600;
+  color:#fff;
+}
+
+.videoActions a {
+  color:#9dd1ff;
+  font-size:13px;
+}
+
+.notFound, .empty {
+  color:#ddd;
+  padding:24px;
+}
+
+@media (max-width:600px) {
+  .header { flex-direction:column; align-items:flex-start; }
+  .logo { width:100px; height:100px; }
+}
