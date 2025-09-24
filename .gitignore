@@ -73,3 +73,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local deploy keys created for CI/agent pushes
+.github_deploy_key
+.github_deploy_key.pub
