@@ -1,12 +1,12 @@
-:root{
+.container{
   --bg:#0d1113;
   --card:#0f1720;
   --muted:#9fbfb6;
   --accent:#33d17a;
   --danger:#ff6b6b;
-}
+  /* local baseline: safer for CSS Modules */
+  --question-min-height: 84px;
 
-.container{
   display:flex;
   gap:24px;
   padding:28px;
@@ -33,7 +33,52 @@
 .qTop{ display:flex; flex-direction:column; gap:8px; }
 .qIndex{ font-size:12px; color:var(--muted); }
 .qText{ font-size:16px; font-weight:600; color:#e6fff9; }
-.qImage{ margin-top:12px; }
+
+.questionCard{ /* ensure we can reference a baseline card height */
+  --card-min-h: var(--question-min-height);
+}
+
+.qImage{ margin-top:12px; /* container for images */
+  display:block;
+  max-width:100%;
+  /* limit the image container to at most double the baseline question height */
+  max-height: calc(var(--card-min-h) * 2);
+  overflow:hidden;
+  border-radius:8px;
+  background: rgba(255,255,255,0.01);
+  padding:6px;
+}
+
+.qImage img{
+  display:block;
+  width:100%;
+  height:auto;
+  max-height: calc(var(--card-min-h) * 2 - 12px); /* account for container padding */
+  object-fit:contain;
+  margin:0 auto;
+  cursor: zoom-in; /* indicate clickable to enlarge */
+}
+
+/* Zoom overlay for clicked images */
+.zoomOverlay{
+  position:fixed;
+  inset:0;
+  background: rgba(0,0,0,0.8);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+  padding:24px;
+}
+.zoomImg{
+  max-width: calc(100% - 48px);
+  max-height: calc(100% - 48px);
+  object-fit:contain;
+  border-radius:8px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.6);
+  background: #fff; /* keep SVGs visible on dark overlay */
+}
+.zoomOverlay { cursor: zoom-out; }
 
 .optionsGrid{ display:grid; grid-template-columns: repeat(2,1fr); gap:10px; margin-top:12px; }
 .optButton{ background: rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); color:#dff9f0; padding:12px 14px; border-radius:10px; text-align:left; cursor:pointer; transition: all 160ms ease; }
