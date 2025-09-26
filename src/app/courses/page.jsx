@@ -4,9 +4,12 @@ import Course from "@/components/course/course";
 
 async function fetchCourses() {
   // Build an absolute URL for server-side fetch. Use NEXT_PUBLIC_BASE_URL if set, otherwise fallback to localhost.
-  const base = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
-  const url = new URL('/api/courses', base);
-  const res = await fetch(url.toString(), { cache: 'no-store' });
+  const base =
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    process.env.NEXTAUTH_URL ||
+    "http://localhost:3000";
+  const url = new URL("/api/courses", base);
+  const res = await fetch(url.toString(), { cache: "no-store" });
   if (!res.ok) return [];
   return res.json();
 }

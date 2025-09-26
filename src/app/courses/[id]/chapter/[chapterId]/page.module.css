@@ -1,0 +1,18 @@
+.container {
+  padding: 24px;
+  color: #fff;
+}
+.title { font-size: 22px; margin-bottom: 12px; }
+.player { width: 100%; max-width: 900px; height: 506px; margin-bottom: 16px; }
+.player iframe { width:100%; height:100%; border:0; }
+.placeholder { padding: 40px; background: rgba(255,255,255,0.02); border-radius:8px; }
+.practice { margin-top: 16px; }
+.question { margin-bottom: 12px; }
+.qText { font-weight:600; margin-bottom: 6px; }
+.options label { display:inline-block; margin-right:10px; }
+.actions { margin-top: 18px; }
+.primary { display:inline-block; padding:10px 14px; background:#0f58d0; color:#fff; border-radius:8px; text-decoration:none; }
+.form { display:flex; flex-direction:column; gap:12px; }
+.submit { padding:10px 14px; background:#1f6feb; color:#fff; border-radius:8px; border:none; }
+.result { margin-top:12px; color:lime; }
+.error { margin-top:12px; color:#ff6b6b; }

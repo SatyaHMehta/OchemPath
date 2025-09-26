@@ -1,0 +1,98 @@
+/* Dark themed login page styles - match register page */
+.container {
+	display: flex;
+	gap: 2rem;
+	align-items: stretch;
+	justify-content: center;
+	padding: 3rem;
+	min-height: calc(100vh - 100px);
+	background: #111;
+}
+
+.left {
+	flex: 1 1 480px;
+	max-width: 560px;
+	background: rgba(17,17,17,0.55);
+	padding: 2rem;
+	border-radius: 12px;
+	box-shadow: 0 8px 30px rgba(2,6,23,0.6);
+	color: #d9f6ef;
+}
+
+.title {
+	margin: 0 0 1rem 0;
+	font-weight: 700;
+	font-size: 28px;
+	background: linear-gradient(to bottom, #8DB946, #476e61, #038697);
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+}
+
+.form {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.input, .select {
+	padding: 0.75rem 0.9rem;
+	border-radius: 8px;
+	border: 1px solid rgba(255,255,255,0.08);
+	background: rgba(255,255,255,0.03);
+	color: #e6fff9;
+	font-size: 0.95rem;
+	width: 100%;
+}
+
+.button {
+	margin-top: 0.5rem;
+	padding: 0.85rem 1rem;
+	border-radius: 10px;
+	border: none;
+	background: linear-gradient(90deg,#8DB946,#038697);
+	color: white;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.error {
+	color: #ffb4b4;
+	background: rgba(255,40,40,0.06);
+	padding: 0.6rem;
+	border-radius: 8px;
+}
+
+.right {
+	flex: 1 1 420px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: relative;
+	background: #111;
+}
+
+.hero {
+	width: 100%;
+	max-width: 520px;
+	border-radius: 12px;
+	box-shadow: 0 12px 36px rgba(0,0,0,0.6);
+	object-fit: cover;
+	display: block;
+	filter: brightness(0.48) contrast(1.05) saturate(0.9);
+}
+
+.right::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: 12px;
+	background: rgba(17,17,17,0.6);
+	pointer-events: none;
+}
+
+@media (max-width: 900px) {
+	.container { flex-direction: column-reverse; padding: 1.5rem; }
+	.left, .right { max-width: 100%; }
+}
+

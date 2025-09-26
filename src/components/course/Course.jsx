@@ -1,10 +1,9 @@
 "use client";
-"use client";
 import React from "react";
 import styles from "./course.module.css";
 import Image from "next/image";
 import Button from "@/components/button/Button";
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
 
 const Course = ({ name, description, image, url }) => {
   const router = useRouter();
@@ -23,7 +22,16 @@ const Course = ({ name, description, image, url }) => {
     >
       <div className={styles.courseContainer}>
         <div className={styles.imageContainer}>
-          <Image className={styles.image} src={image} fill={true} alt={name} />
+          {image ? (
+            <Image
+              className={styles.image}
+              src={image}
+              fill={true}
+              alt={name}
+            />
+          ) : (
+            <div className={styles.imagePlaceholder} aria-hidden="true" />
+          )}
           <h1 className={styles.imageTitle}>{name}</h1>
         </div>
         <div className={styles.descriptionContainer}>

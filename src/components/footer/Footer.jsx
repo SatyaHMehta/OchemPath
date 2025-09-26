@@ -5,8 +5,8 @@ const Footer = () => {
   return (
     <footer className={styles.container}>
       <div className={styles.left}>
-        <div className={styles.brand}>Ochem Quiz</div>
-        <div className={styles.copy}>© {new Date().getFullYear()} Ochem Quiz</div>
+        <div className={styles.brand}>OchemPath</div>
+        <div className={styles.copy}>© {new Date().getFullYear()} OchemPath</div>
       </div>
       <div className={styles.links}>
         <a href="/" aria-label="Home">Home</a>

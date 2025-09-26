@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1">
+      <stop offset="0" stop-color="#e6fbf6"/>
+      <stop offset="1" stop-color="#dff3ee"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#g)" />
+  <g transform="translate(90,60)">
+    <text x="0" y="40" font-size="32" fill="#16424b" font-family="Arial, Helvetica, sans-serif">Organic Chemistry</text>
+    <g transform="translate(0,80)" fill="#2b8e7f" opacity="0.95">
+      <circle cx="80" cy="80" r="48" />
+      <circle cx="200" cy="40" r="36" />
+      <circle cx="320" cy="120" r="28" />
+      <rect x="60" y="220" width="220" height="14" rx="7" fill="#1b6f62"/>
+    </g>
+    <g transform="translate(380,60)" fill="#1b6f62" opacity="0.9">
+      <path d="M0 180 C 60 120, 140 120, 200 180" stroke="#1b6f62" stroke-width="6" fill="none"/>
+      <circle cx="0" cy="180" r="14" fill="#2b8e7f" />
+      <circle cx="200" cy="180" r="14" fill="#2b8e7f" />
+    </g>
+    <g transform="translate(560,20)" fill="#ffffff" font-size="18">
+      <rect x="0" y="0" width="520" height="360" rx="14" fill="#ffffff" opacity="0.08" />
+    </g>
+  </g>
+</svg>
