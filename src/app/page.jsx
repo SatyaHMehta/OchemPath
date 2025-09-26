@@ -5,10 +5,10 @@ import styles from "./page.module.css";
 import Button from "@/components/button/Button";
 
 const SUPABASE_LOGO_URL =
-  "https://zajechrlsivmlyywhgwp.supabase.co/storage/v1/object/public/course-images/OchemLogo.jpg";
+  "https://zajechrlsivmlyywhgwp.supabase.co/storage/v1/object/sign/Images/OchemLogo.JPG?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80ODc5YWFkYy1mZWViLTQ1YzgtOTYzMy1iOWM1MGY4MTdmMTciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJJbWFnZXMvT2NoZW1Mb2dvLkpQRyIsImlhdCI6MTc1ODkwMzM5MiwiZXhwIjoxODUzNTExMzkyfQ.U3DLeRGtAh-DS_RDcw0m-X36oC_ESPiZc3wpK1H2UPw";
 
 const SUPABASE_PUBLIC_LOGO =
-  "https://zajechrlsivmlyywhgwp.supabase.co/storage/v1/object/public/course-images/OchemLogo.jpg";
+  "https://zajechrlsivmlyywhgwp.supabase.co/storage/v1/object/sign/Images/OchemLogo.JPG?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80ODc5YWFkYy1mZWViLTQ1YzgtOTYzMy1iOWM1MGY4MTdmMTciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJJbWFnZXMvT2NoZW1Mb2dvLkpQRyIsImlhdCI6MTc1ODkwMzM5MiwiZXhwIjoxODUzNTExMzkyfQ.U3DLeRGtAh-DS_RDcw0m-X36oC_ESPiZc3wpK1H2UPw";
 
 export default function Home() {
   return (

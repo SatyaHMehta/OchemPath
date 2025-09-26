@@ -1,18 +1,70 @@
-.container {
-  padding: 24px;
-  color: #fff;
+:root{
+  --bg:#0d1113;
+  --card:#0f1720;
+  --muted:#9fbfb6;
+  --accent:#33d17a;
+  --danger:#ff6b6b;
 }
-.title { font-size: 22px; margin-bottom: 12px; }
-.player { width: 100%; max-width: 900px; height: 506px; margin-bottom: 16px; }
-.player iframe { width:100%; height:100%; border:0; }
-.placeholder { padding: 40px; background: rgba(255,255,255,0.02); border-radius:8px; }
-.practice { margin-top: 16px; }
-.question { margin-bottom: 12px; }
-.qText { font-weight:600; margin-bottom: 6px; }
-.options label { display:inline-block; margin-right:10px; }
-.actions { margin-top: 18px; }
-.primary { display:inline-block; padding:10px 14px; background:#0f58d0; color:#fff; border-radius:8px; text-decoration:none; }
-.form { display:flex; flex-direction:column; gap:12px; }
-.submit { padding:10px 14px; background:#1f6feb; color:#fff; border-radius:8px; border:none; }
-.result { margin-top:12px; color:lime; }
-.error { margin-top:12px; color:#ff6b6b; }
+
+.container{
+  display:flex;
+  gap:24px;
+  padding:28px;
+  color:#e6fff9;
+  min-height:calc(100vh - 80px);
+  background: linear-gradient(180deg, rgba(13,17,19,1), rgba(7,9,11,1));
+}
+
+.leftCol{ flex:1 1 720px; max-width:900px; }
+.sidebar{ width:320px; display:flex; flex-direction:column; gap:16px; }
+
+.headerRow{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:12px; }
+.title{ margin:0; font-size:20px; font-weight:700; }
+
+.scoreBox{ min-width:220px; }
+.scoreText{ font-size:14px; color:var(--muted); margin-bottom:8px; }
+.progressBar{ width:100%; height:10px; background:rgba(255,255,255,0.04); border-radius:999px; overflow:hidden; }
+.progress{ height:100%; background:linear-gradient(90deg,#76f2b0,#2bb07e); border-radius:999px; }
+
+.practice{ margin-top:8px; }
+.questionsList{ list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:14px; }
+
+.questionCard{ background: rgba(255,255,255,0.02); border-radius:12px; padding:16px; box-shadow:0 8px 24px rgba(0,0,0,0.6); }
+.qTop{ display:flex; flex-direction:column; gap:8px; }
+.qIndex{ font-size:12px; color:var(--muted); }
+.qText{ font-size:16px; font-weight:600; color:#e6fff9; }
+.qImage{ margin-top:12px; }
+
+.optionsGrid{ display:grid; grid-template-columns: repeat(2,1fr); gap:10px; margin-top:12px; }
+.optButton{ background: rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); color:#dff9f0; padding:12px 14px; border-radius:10px; text-align:left; cursor:pointer; transition: all 160ms ease; }
+.optButton:hover{ transform: translateY(-3px); box-shadow:0 10px 30px rgba(0,0,0,0.6); }
+.optLabel{ display:block; }
+.optSelected{ border-color: rgba(120,220,180,0.25); box-shadow: inset 0 0 0 2px rgba(120,220,180,0.06); }
+.optCorrect{ background: linear-gradient(90deg,#1a6b3f,#1a8f5d); border-color: rgba(50,200,140,0.9); color:#eafff2; }
+.optWrong{ background: linear-gradient(90deg,#4b1a1a,#6b2a2a); border-color: rgba(255,90,90,0.9); color:#ffecec; }
+
+.feedback{ margin-top:12px; font-size:14px; }
+.feedbackCorrect{ color:var(--accent); }
+.feedbackWrong{ color:var(--danger); }
+
+.actionsRow{ display:flex; gap:8px; align-items:center; margin-top:16px; }
+.primary{ background: linear-gradient(90deg,#1fbd7a,#138a55); color:#fff; border:none; padding:10px 14px; border-radius:10px; cursor:pointer; }
+.secondary{ background:transparent; color:var(--muted); border:1px solid rgba(255,255,255,0.04); padding:10px 12px; border-radius:10px; cursor:pointer; }
+.ghost{ margin-left:auto; background:transparent; color:var(--muted); border:1px dashed rgba(255,255,255,0.03); padding:8px 12px; border-radius:10px; cursor:pointer; }
+
+.sidebarCard{ background: rgba(255,255,255,0.02); padding:14px; border-radius:12px; }
+.sidebarHeader{ font-weight:700; font-size:14px; }
+.sidebarSub{ color:var(--muted); font-size:12px; margin-top:6px; }
+.dotsRow{ display:flex; gap:8px; margin-top:12px; }
+.dot{ width:22px; height:22px; border-radius:6px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.02); }
+
+.tipsCard{ background: rgba(255,255,255,0.02); padding:14px; border-radius:12px; color:var(--muted); }
+.tipsCard h4{ margin:0 0 8px 0; color:#e6fff9; }
+.tipsCard ul{ margin:0; padding-left:18px; }
+
+@media (max-width:1000px){
+  .container{ flex-direction:column; padding:18px; }
+  .sidebar{ width:100%; order:2; }
+  .leftCol{ order:1; }
+  .optionsGrid{ grid-template-columns: 1fr; }
+}

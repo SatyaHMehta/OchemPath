@@ -1,90 +1,198 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
 import styles from "./page.module.css";
 
-async function fetchCourses() {
-  const base =
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    process.env.NEXTAUTH_URL ||
-    "http://localhost:3000";
-  const url = new URL("/api/courses", base);
-  const res = await fetch(url.toString(), { cache: "no-store" });
-  if (!res.ok) return [];
-  return res.json();
-}
-
-export default async function PracticePage({ params }) {
+export default function PracticePage({ params }) {
   const { id, chapterId } = params;
-  const courses = await fetchCourses();
-  const course = courses.find((c) => String(c.id) === String(id));
-  const chapter = course?.chapters?.find(
-    (ch) => String(ch.id) === String(chapterId)
-  );
+  const [course, setCourse] = useState(null);
+  const [chapter, setChapter] = useState(null);
 
-  // Build a few placeholder practice questions
-  const practiceQuestions = [
+  // client-side fetch for courses (keeps this file simple)
+  useEffect(() => {
+    async function load() {
+      try {
+        const base =
+          process.env.NEXT_PUBLIC_BASE_URL ||
+          process.env.NEXTAUTH_URL ||
+          "http://localhost:3000";
+        const url = new URL("/api/courses", base);
+        const res = await fetch(url.toString());
+        if (!res.ok) return;
+        const data = await res.json();
+        const c = data.find((x) => String(x.id) === String(id));
+        setCourse(c || null);
+        setChapter(c?.chapters?.find((ch) => String(ch.id) === String(chapterId)) || null);
+      } catch (e) {
+        console.warn("Failed loading course", e);
+      }
+    }
+    load();
+  }, [id, chapterId]);
+
+  // Placeholder practice questions with a correct index for demo
+  const [questions] = useState([
     {
       id: 1,
-      text: "Placeholder: What is the hybridization?",
-      options: ["sp", "sp2", "sp3", "sp3d"],
+      text: "Identify the aromatic ring shown (ignore substituents).",
+      options: ["Cyclohexane", "Benzene", "Phenol", "Pyridine"],
+      correctIndex: 1,
+      image: null,
     },
     {
       id: 2,
-      text: "Placeholder: Which is most acidic?",
-      options: ["A", "B", "C", "D"],
+      text: "Which hybridization most describes the carbon atoms in ethene?",
+      options: ["sp^3", "sp^2", "sp", "It depends on resonance"],
+      correctIndex: 1,
     },
     {
       id: 3,
-      text: "Placeholder: Identify the functional group.",
-      options: ["alcohol", "ketone", "aldehyde", "amine"],
+      text: "Which statement about electronegativity and bond polarity is TRUE?",
+      options: [
+        "Bonds between identical atoms are always polar.",
+        "Greater electronegativity difference increases bond polarity.",
+        "A polar bond always makes the whole molecule polar.",
+        "Electronegativity is unrelated to electron density.",
+      ],
+      correctIndex: 1,
     },
-  ];
+  ]);
 
-  if (!course) return <div className={styles.notFound}>Course not found</div>;
+  const [answers, setAnswers] = useState({}); // qid -> chosenIndex
+  const [checked, setChecked] = useState(false);
+
+  if (!course)
+    return <div className={styles.notFound}>Loading course information…</div>;
+
+  const select = (qid, optIndex) => {
+    if (checked) return; // lock after check
+    setAnswers((s) => ({ ...s, [qid]: optIndex }));
+  };
+
+  const resetAll = () => {
+    setAnswers({});
+    setChecked(false);
+  };
+
+  const check = () => {
+    setChecked(true);
+  };
+
+  const score = () => {
+    let correct = 0;
+    questions.forEach((q) => {
+      if (answers[q.id] === q.correctIndex) correct += 1;
+    });
+    return { correct, total: questions.length };
+  };
+
+  const progress = (score().correct / Math.max(1, score().total)) * 100;
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.title}>
-        {course.name} — {chapter?.title ?? "Chapter"}
-      </h1>
-      {chapter?.videos && chapter.videos.length > 0 ? (
-        <div className={styles.player}>
-          <iframe
-            src={`https://www.youtube.com/embed/${chapter.videos[0].id}`}
-            title={chapter.videos[0].title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-          ></iframe>
+      <div className={styles.leftCol}>
+        <div className={styles.headerRow}>
+          <h1 className={styles.title}>
+            {course.name} — {chapter?.title ?? "Chapter"}
+          </h1>
+          <div className={styles.scoreBox}>
+            <div className={styles.scoreText}>
+              Score so far: <strong>{`${score().correct} / ${score().total}`}</strong>
+            </div>
+            <div className={styles.progressBar}>
+              <div className={styles.progress} style={{ width: `${progress}%` }} />
+            </div>
+          </div>
         </div>
-      ) : (
-        <div className={styles.placeholder}>Video not uploaded yet.</div>
-      )}
 
-      <section className={styles.practice}>
-        <h2>Practice Questions</h2>
-        <ol>
-          {practiceQuestions.map((q) => (
-            <li key={q.id} className={styles.question}>
-              <div className={styles.qText}>{q.text}</div>
-              <div className={styles.options}>
-                {q.options.map((o) => (
-                  <label key={o} className={styles.option}>
-                    <input type="radio" name={`q-${q.id}`} /> {o}
-                  </label>
-                ))}
-              </div>
-            </li>
-          ))}
-        </ol>
-      </section>
+        <section className={styles.practice}>
+          <ol className={styles.questionsList}>
+            {questions.map((q) => (
+              <li key={q.id} className={styles.questionCard}>
+                <div className={styles.qTop}>
+                  <div className={styles.qIndex}>Question {q.id}</div>
+                  <div className={styles.qText}>{q.text}</div>
+                </div>
 
-      <div className={styles.actions}>
-        <a
-          className={styles.primary}
-          href={`/courses/${id}/chapter/${chapterId}/quiz`}
-        >
-          Start Chapter Quiz
-        </a>
+                {q.image && (
+                  <div className={styles.qImage}>
+                    <img src={q.image} alt="question" />
+                  </div>
+                )}
+
+                <div className={styles.optionsGrid}>
+                  {q.options.map((opt, idx) => {
+                    const chosen = answers[q.id] === idx;
+                    const isCorrect = q.correctIndex === idx;
+                    const showCorrect = checked && isCorrect;
+                    const showWrong = checked && chosen && !isCorrect;
+                    const cls = [styles.optButton];
+                    if (chosen) cls.push(styles.optSelected);
+                    if (showCorrect) cls.push(styles.optCorrect);
+                    if (showWrong) cls.push(styles.optWrong);
+                    return (
+                      <button
+                        key={idx}
+                        className={cls.join(" ")}
+                        onClick={() => select(q.id, idx)}
+                        type="button"
+                      >
+                        <span className={styles.optLabel}>{opt}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {checked && (
+                  <div className={styles.feedback}>
+                    {answers[q.id] === q.correctIndex ? (
+                      <span className={styles.feedbackCorrect}>Correct.</span>
+                    ) : (
+                      <span className={styles.feedbackWrong}>
+                        Not quite. The correct answer is highlighted.
+                      </span>
+                    )}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ol>
+
+          <div className={styles.actionsRow}>
+            <button className={styles.primary} onClick={() => (window.location.href = `/courses/${id}/chapter/${chapterId}/quiz`)}>
+              Chapter Quiz
+            </button>
+            <button className={styles.secondary} onClick={resetAll}>
+              Reset All
+            </button>
+            <button className={styles.ghost} onClick={check} disabled={checked}>
+              Check Answers
+            </button>
+          </div>
+        </section>
       </div>
+
+      <aside className={styles.sidebar}>
+        <div className={styles.sidebarCard}>
+          <div className={styles.sidebarHeader}>Organic Chemistry</div>
+          <div className={styles.sidebarSub}>Chapter 1 • Practice</div>
+          <div className={styles.dotsRow}>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <div key={n} className={styles.dot} />
+            ))}
+          </div>
+        </div>
+
+        <div className={styles.tipsCard}>
+          <h4>Tips for this Chapter</h4>
+          <ul>
+            <li>Review s, p, and hybrid orbitals (sp, sp2, sp3).</li>
+            <li>Memorize common aromatic systems (benzene, pyridine).</li>
+            <li>Relate electronegativity to bond polarity and dipoles.</li>
+            <li>Practice identifying sigma vs pi bonds in drawings.</li>
+          </ul>
+        </div>
+      </aside>
     </div>
   );
 }
