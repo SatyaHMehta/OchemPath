@@ -1,17 +1,27 @@
 import React from "react";
 import styles from "./page.module.css";
 import Course from "@/components/course/Course";
+import supabaseAdmin from "@/lib/supabaseServer";
 
 async function fetchCourses() {
-  // Build an absolute URL for server-side fetch. Use NEXT_PUBLIC_BASE_URL if set, otherwise fallback to localhost.
-  const base =
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    process.env.NEXTAUTH_URL ||
-    "http://localhost:3000";
-  const url = new URL("/api/courses", base);
-  const res = await fetch(url.toString(), { cache: "no-store" });
-  if (!res.ok) return [];
-  return res.json();
+  try {
+    console.log('[COURSES] Fetching courses directly from database...');
+    
+    const { data, error } = await supabaseAdmin
+      .from('courses')
+      .select('id, name, description, cover');
+
+    if (error) {
+      console.error('[COURSES] Database error:', error);
+      return [];
+    }
+
+    console.log('[COURSES] Successfully fetched courses:', data?.length || 0);
+    return data || [];
+  } catch (error) {
+    console.error('[COURSES] Unexpected error:', error);
+    return [];
+  }
 }
 
 const Courses = async () => {
