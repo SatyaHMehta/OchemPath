@@ -1,6 +1,6 @@
 import React from "react";
 import styles from "./page.module.css";
-import Course from "@/components/course/course";
+import Course from "@/components/course/Course";
 
 async function fetchCourses() {
   // Build an absolute URL for server-side fetch. Use NEXT_PUBLIC_BASE_URL if set, otherwise fallback to localhost.
