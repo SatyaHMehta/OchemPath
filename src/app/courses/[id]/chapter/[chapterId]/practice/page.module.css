@@ -11,11 +11,20 @@
   gap:24px;
   padding:28px;
   color:#e6fff9;
-  min-height:calc(100vh - 80px);
+  height:100vh;
+  max-height:100vh;
+  overflow:hidden;
   background: linear-gradient(180deg, rgba(13,17,19,1), rgba(7,9,11,1));
 }
 
-.leftCol{ flex:1 1 720px; max-width:900px; }
+.leftCol{ 
+  flex:1 1 720px; 
+  max-width:900px; 
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
 .sidebar{ width:320px; display:flex; flex-direction:column; gap:16px; }
 
 .headerRow{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:12px; }
@@ -26,8 +35,44 @@
 .progressBar{ width:100%; height:10px; background:rgba(255,255,255,0.04); border-radius:999px; overflow:hidden; }
 .progress{ height:100%; background:linear-gradient(90deg,#76f2b0,#2bb07e); border-radius:999px; }
 
-.practice{ margin-top:8px; }
-.questionsList{ list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:14px; }
+.practice{ 
+  margin-top:8px; 
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.questionsList{ 
+  list-style:none; 
+  padding:0; 
+  margin:0; 
+  display:flex; 
+  flex-direction:column; 
+  gap:14px;
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+
+.questionsList::-webkit-scrollbar {
+  width: 8px;
+}
+
+.questionsList::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.questionsList::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+}
+
+.questionsList::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.2);
+}
 
 .questionCard{ background: rgba(255,255,255,0.02); border-radius:12px; padding:16px; box-shadow:0 8px 24px rgba(0,0,0,0.6); }
 .qTop{ display:flex; flex-direction:column; gap:8px; }
@@ -92,7 +137,15 @@
 .feedbackCorrect{ color:var(--accent); }
 .feedbackWrong{ color:var(--danger); }
 
-.actionsRow{ display:flex; gap:8px; align-items:center; margin-top:16px; }
+.actionsRow{ 
+  display:flex; 
+  gap:8px; 
+  align-items:center; 
+  margin-top:16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  flex-shrink: 0;
+}
 .primary{ background: linear-gradient(90deg,#1fbd7a,#138a55); color:#fff; border:none; padding:10px 14px; border-radius:10px; cursor:pointer; }
 .secondary{ background:transparent; color:var(--muted); border:1px solid rgba(255,255,255,0.04); padding:10px 12px; border-radius:10px; cursor:pointer; }
 .ghost{ margin-left:auto; background:transparent; color:var(--muted); border:1px dashed rgba(255,255,255,0.03); padding:8px 12px; border-radius:10px; cursor:pointer; }
@@ -108,8 +161,16 @@
 .tipsCard ul{ margin:0; padding-left:18px; }
 
 @media (max-width:1000px){
-  .container{ flex-direction:column; padding:18px; }
-  .sidebar{ width:100%; order:2; }
-  .leftCol{ order:1; }
+  .container{ 
+    flex-direction:column; 
+    padding:18px; 
+    height: 100vh;
+  }
+  .sidebar{ width:100%; order:2; max-height: 200px; overflow-y: auto; }
+  .leftCol{ 
+    order:1; 
+    flex: 1;
+    min-height: 0;
+  }
   .optionsGrid{ grid-template-columns: 1fr; }
 }

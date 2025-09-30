@@ -4,13 +4,14 @@ export async function PUT(req, { params }) {
   try {
     const { id } = params;
     const body = await req.json();
-    const { text, type, points, image, choices } = body;
+    const { text, type, points, image, choices, published } = body;
 
     const updatePayload = {};
     if (text !== undefined) updatePayload.text = text;
     if (type !== undefined) updatePayload.type = type;
     if (points !== undefined) updatePayload.points = points;
     if (image !== undefined) updatePayload.image = image;
+    if (published !== undefined) updatePayload.published = published;
 
     if (Object.keys(updatePayload).length > 0) {
       const { error: upErr } = await supabaseAdmin
@@ -43,7 +44,7 @@ export async function PUT(req, { params }) {
     const { data, error } = await supabaseAdmin
       .from("questions")
       .select(
-        "id, position, text, type, points, image, choices(id, text, is_correct)"
+        "id, position, text, type, points, image, published, choices(id, text, is_correct)"
       )
       .eq("id", id)
       .maybeSingle();

@@ -48,7 +48,7 @@ export async function GET(req) {
     const { data: questions, error } = await supabaseAdmin
       .from("questions")
       .select(
-        "id, position, text, type, points, image, quiz_id, choices(id, text, is_correct)"
+        "id, position, text, type, points, image, quiz_id, published, choices(id, text, is_correct)"
       )
       .eq("quiz_id", quizId)
       .order("position", { ascending: true });
@@ -78,6 +78,7 @@ export async function POST(req) {
       image = null,
       choices = [],
       is_practice: isPractice = true,
+      published = false,
     } = body;
     if (!chapterId || !text)
       return new Response(
@@ -98,8 +99,8 @@ export async function POST(req) {
 
     const { data: q, error: qErr } = await supabaseAdmin
       .from("questions")
-      .insert({ quiz_id: quizId, position: nextPos, text, type, points, image })
-      .select("id, position, text, type, points, image")
+      .insert({ quiz_id: quizId, position: nextPos, text, type, points, image, published })
+      .select("id, position, text, type, points, image, published")
       .maybeSingle();
     if (qErr) throw qErr;
 
@@ -119,7 +120,7 @@ export async function POST(req) {
     const { data: questionWithChoices, error: fetchErr } = await supabaseAdmin
       .from("questions")
       .select(
-        "id, position, text, type, points, image, choices(id, text, is_correct)"
+        "id, position, text, type, points, image, published, choices(id, text, is_correct)"
       )
       .eq("id", q.id)
       .maybeSingle();

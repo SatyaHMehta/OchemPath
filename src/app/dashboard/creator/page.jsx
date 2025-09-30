@@ -254,11 +254,34 @@ function CourseManager({ course, onBack, onSelectChapter }) {
   const [selectedChapter, setSelectedChapter] = useState(null);
   const [editing, setEditing] = useState(false);
 
+  // Practice questions state
+  const [practiceQuestions, setPracticeQuestions] = useState([]);
+  const [questionsLoading, setQuestionsLoading] = useState(false);
+  const [selectedQuestion, setSelectedQuestion] = useState(null);
+  const [editingQuestion, setEditingQuestion] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [validationMessage, setValidationMessage] = useState("");
+
   const [chapterForm, setChapterForm] = useState({
     title: "",
     description: "",
     video_url: "",
     position: 1,
+  });
+
+  const [questionForm, setQuestionForm] = useState({
+    text: "",
+    type: "multiple_choice",
+    points: 2,
+    position: 1,
+    image_url: "",
+    published: false,
+    choices: [
+      { text: "", is_correct: false },
+      { text: "", is_correct: false },
+      { text: "", is_correct: false },
+      { text: "", is_correct: false }
+    ]
   });
 
   useEffect(() => {
@@ -458,18 +481,293 @@ function CourseManager({ course, onBack, onSelectChapter }) {
     setEditing(false);
   };
 
+  // Practice Questions Functions
+  const loadPracticeQuestions = async () => {
+    if (!selectedChapter?.id) return;
+    
+    setQuestionsLoading(true);
+    try {
+      const response = await fetch(`/api/admin/questions?chapter_id=${selectedChapter.id}&is_practice=true`);
+      if (response.ok) {
+        const data = await response.json();
+        setPracticeQuestions(data);
+        if (data.length > 0 && !selectedQuestion) {
+          selectQuestion(data[0]);
+        }
+      } else {
+        console.error("Failed to load practice questions");
+      }
+    } catch (error) {
+      console.error("Error loading practice questions:", error);
+    } finally {
+      setQuestionsLoading(false);
+    }
+  };
+
+  const selectQuestion = (question) => {
+    console.log("Selected question:", question);
+    setSelectedQuestion(question);
+    setQuestionForm({
+      text: question.text || "",
+      type: question.type || "multiple_choice",
+      points: question.points || 2,
+      position: question.position || 1,
+      image_url: question.image_url || "",
+      published: question.published || false,
+      choices: question.choices || [
+        { text: "", is_correct: false },
+        { text: "", is_correct: false },
+        { text: "", is_correct: false },
+        { text: "", is_correct: false }
+      ]
+    });
+    setEditingQuestion(false);
+  };
+
+  const startNewQuestion = () => {
+    setSelectedQuestion(null);
+    setQuestionForm({
+      text: "",
+      type: "multiple_choice",
+      points: 2,
+      position: practiceQuestions.length + 1,
+      image_url: "",
+      choices: [
+        { text: "", is_correct: false },
+        { text: "", is_correct: false },
+        { text: "", is_correct: false },
+        { text: "", is_correct: false }
+      ]
+    });
+    setEditingQuestion(true);
+  };
+
+  const startEditQuestion = () => {
+    setEditingQuestion(true);
+  };
+
+  const saveQuestion = async () => {
+    // Check if at least one answer is marked as correct
+    const hasCorrectAnswer = questionForm.choices.some(choice => choice.is_correct);
+    if (!hasCorrectAnswer) {
+      setValidationMessage("Please select at least one correct answer before saving.");
+      setTimeout(() => setValidationMessage(""), 4000);
+      return;
+    }
+
+    try {
+      const questionData = {
+        ...questionForm,
+        chapter_id: selectedChapter.id,
+        is_practice: true
+      };
+
+      let response;
+      if (selectedQuestion) {
+        // Update existing question
+        response = await fetch(`/api/admin/questions/${selectedQuestion.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(questionData),
+        });
+      } else {
+        // Create new question
+        response = await fetch("/api/admin/questions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(questionData),
+        });
+      }
+
+      if (response.ok) {
+        const savedQuestion = await response.json();
+        await loadPracticeQuestions();
+        setSelectedQuestion(savedQuestion);
+        setEditingQuestion(false);
+        setSuccessMessage("Question saved successfully!");
+        setTimeout(() => setSuccessMessage(""), 3000);
+      } else {
+        const error = await response.json();
+        setSuccessMessage(`Error: ${error.error || "Failed to save question"}`);
+        setTimeout(() => setSuccessMessage(""), 5000);
+      }
+    } catch (error) {
+      console.error("Error saving question:", error);
+      setSuccessMessage("Failed to save question");
+      setTimeout(() => setSuccessMessage(""), 5000);
+    }
+  };
+
+  const toggleQuestionPublish = async (question) => {
+    try {
+      const response = await fetch(`/api/admin/questions/${question.id}/publish`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ published: !question.published }),
+      });
+
+      if (response.ok) {
+        setSuccessMessage(`Question ${!question.published ? 'published' : 'unpublished'} successfully!`);
+        setTimeout(() => setSuccessMessage(""), 3000);
+        await loadPracticeQuestions();
+      } else {
+        const error = await response.json();
+        setSuccessMessage(`Error: ${error.error || "Failed to update question"}`);
+        setTimeout(() => setSuccessMessage(""), 5000);
+      }
+    } catch (error) {
+      console.error("Error updating question:", error);
+      setSuccessMessage("Failed to update question");
+      setTimeout(() => setSuccessMessage(""), 5000);
+    }
+  };
+
+  const publishAllDrafts = async () => {
+    const draftQuestions = practiceQuestions.filter(q => !q.published);
+    
+    if (draftQuestions.length === 0) {
+      setValidationMessage("No draft questions to publish.");
+      setTimeout(() => setValidationMessage(""), 3000);
+      return;
+    }
+
+    try {
+      const publishPromises = draftQuestions.map(question => 
+        fetch(`/api/admin/questions/${question.id}/publish`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ published: true }),
+        })
+      );
+
+      const results = await Promise.all(publishPromises);
+      const successful = results.filter(r => r.ok).length;
+      const failed = results.length - successful;
+
+      if (failed === 0) {
+        setSuccessMessage(`Successfully published all ${successful} draft questions!`);
+      } else {
+        setSuccessMessage(`Published ${successful} questions, ${failed} failed.`);
+      }
+      
+      setTimeout(() => setSuccessMessage(""), 4000);
+      await loadPracticeQuestions();
+    } catch (error) {
+      console.error("Error publishing drafts:", error);
+      setSuccessMessage("Failed to publish draft questions");
+      setTimeout(() => setSuccessMessage(""), 5000);
+    }
+  };
+
+  const duplicateQuestion = async (question) => {
+    const duplicatedQuestion = {
+      ...question,
+      text: `${question.text} (Copy)`,
+      position: practiceQuestions.length + 1,
+      choices: question.choices?.map(choice => ({ ...choice })) || [
+        { text: "", is_correct: false },
+        { text: "", is_correct: false },
+        { text: "", is_correct: false },
+        { text: "", is_correct: false }
+      ]
+    };
+    delete duplicatedQuestion.id; // Remove ID so it creates a new question
+    
+    try {
+      const response = await fetch("/api/admin/questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...duplicatedQuestion,
+          chapter_id: selectedChapter.id,
+          is_practice: true
+        }),
+      });
+
+      if (response.ok) {
+        setSuccessMessage("Question duplicated successfully!");
+        setTimeout(() => setSuccessMessage(""), 3000);
+        await loadPracticeQuestions();
+      } else {
+        const error = await response.json();
+        setSuccessMessage(`Error: ${error.error || "Failed to duplicate question"}`);
+        setTimeout(() => setSuccessMessage(""), 5000);
+      }
+    } catch (error) {
+      console.error("Error duplicating question:", error);
+      setSuccessMessage("Failed to duplicate question");
+      setTimeout(() => setSuccessMessage(""), 5000);
+    }
+  };
+
+  const deleteQuestion = async (question) => {
+    if (!confirm(`Are you sure you want to delete "${question.text}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/questions/${question.id}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        await loadPracticeQuestions();
+        if (selectedQuestion?.id === question.id) {
+          const remainingQuestions = practiceQuestions.filter((q) => q.id !== question.id);
+          if (remainingQuestions.length > 0) {
+            selectQuestion(remainingQuestions[0]);
+          } else {
+            setSelectedQuestion(null);
+            startNewQuestion();
+          }
+        }
+        setSuccessMessage("Question deleted successfully!");
+        setTimeout(() => setSuccessMessage(""), 3000);
+      } else {
+        const error = await response.json();
+        setSuccessMessage(`Error: ${error.error || "Failed to delete question"}`);
+        setTimeout(() => setSuccessMessage(""), 5000);
+      }
+    } catch (error) {
+      console.error("Error deleting question:", error);
+      setSuccessMessage("Failed to delete question");
+      setTimeout(() => setSuccessMessage(""), 5000);
+    }
+  };
+
+  const cancelQuestionEdit = () => {
+    if (selectedQuestion) {
+      selectQuestion(selectedQuestion);
+    } else {
+      if (practiceQuestions.length > 0) {
+        selectQuestion(practiceQuestions[0]);
+      }
+    }
+    setEditingQuestion(false);
+  };
+
+  // Load practice questions when chapter or practice tab is selected
+  useEffect(() => {
+    if (activeTab === "practice" && selectedChapter?.id) {
+      loadPracticeQuestions();
+    }
+  }, [activeTab, selectedChapter?.id]);
+
   return (
     <div className={styles.courseManager}>
       {/* Course Header with Back Button */}
       <div className={styles.courseHeader}>
         <button className={styles.backBtn} onClick={onBack}>
-          ← Back to Courses
+          {activeTab === "practice" && selectedChapter 
+            ? `← Back to Chapter ${selectedChapter.position}` 
+            : "← Back to Courses"}
         </button>
         <h2>{course.title} — Course Manager</h2>
       </div>
 
-      <div className={styles.courseLayout}>
-        {/* Chapters Sidebar */}
+      <div className={`${styles.courseLayout} ${activeTab === "practice" ? styles.practiceMode : ""}`}>
+        {/* Chapters Sidebar - Hidden in Practice Tab */}
+        {activeTab !== "practice" && (
         <div className={styles.chaptersSidebar}>
           <div className={styles.chaptersHeader}>
             <h3>Chapters</h3>
@@ -548,6 +846,7 @@ function CourseManager({ course, onBack, onSelectChapter }) {
             )}
           </div>
         </div>
+        )}
 
         {/* Main Content */}
         <div className={styles.courseContent}>
@@ -658,6 +957,217 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                 >
                   Create Quiz
                 </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "practice" && (
+            <div className={styles.practiceContent}>
+              {/* Success Message */}
+              {successMessage && (
+                <div className={styles.successMessage}>
+                  {successMessage}
+                </div>
+              )}
+              
+              {/* Validation Message */}
+              {validationMessage && (
+                <div className={styles.validationMessage}>
+                  {validationMessage}
+                </div>
+              )}
+              {/* Questions Sidebar */}
+              <div className={styles.questionsSidebar}>
+                <div className={styles.questionsHeader}>
+                  <h3>Practice Questions</h3>
+                  <div className={styles.questionHeaderActions}>
+                    {practiceQuestions.filter(q => !q.published).length > 1 && (
+                      <button 
+                        className={styles.publishAllBtn} 
+                        onClick={publishAllDrafts}
+                        title={`Publish ${practiceQuestions.filter(q => !q.published).length} draft questions`}
+                      >
+                        Publish All Drafts ({practiceQuestions.filter(q => !q.published).length})
+                      </button>
+                    )}
+                    <button className={styles.addQuestionBtn} onClick={startNewQuestion}>
+                      + Add Question
+                    </button>
+                  </div>
+                </div>
+
+                <div className={styles.questionsList}>
+                  {questionsLoading ? (
+                    <div style={{ padding: "20px", textAlign: "center", color: "#8b949e" }}>
+                      Loading questions...
+                    </div>
+                  ) : practiceQuestions.length === 0 ? (
+                    <div style={{ padding: "20px", textAlign: "center", color: "#8b949e" }}>
+                      No practice questions yet. Click "+ Add Question" to get started.
+                    </div>
+                  ) : (
+                    practiceQuestions.map((question, index) => (
+                      <div
+                        key={question.id}
+                        className={`${styles.questionItem} ${
+                          selectedQuestion?.id === question.id ? styles.active : ""
+                        }`}
+                        onClick={() => selectQuestion(question)}
+                      >
+                        <div className={styles.questionContent}>
+                          <div className={styles.questionHeader}>
+                            <span className={styles.questionNumber}>Q{index + 1}</span>
+                            <span className={styles.questionType}>{question.type?.toUpperCase()}</span>
+                            <span className={styles.questionPoints}>• {question.points} pts</span>
+                            {!question.published && (
+                              <span className={styles.draftTag}>DRAFT</span>
+                            )}
+                          </div>
+                          
+                          <div className={styles.questionText}>
+                            {question.text && question.text.length > 50 
+                              ? `${question.text.substring(0, 50)}...` 
+                              : question.text || "Prompt preview..."}
+                          </div>
+                          
+                          <div className={styles.pointsDisplay}>
+                            Points: {question.points}
+                          </div>
+                          
+                          <div className={styles.questionButtons}>
+                            <button 
+                              className={styles.duplicateBtn}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                duplicateQuestion(question);
+                              }}
+                            >
+                              Duplicate
+                            </button>
+                            <button 
+                              className={`${styles.publishBtn} ${question.published ? styles.unpublish : styles.publish}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleQuestionPublish(question);
+                              }}
+                            >
+                              {question.published ? 'Unpublish' : 'Publish'}
+                            </button>
+                            <button className={styles.moveBtn}>Move ↑↓</button>
+                          </div>
+                        </div>
+                        
+                        <div className={styles.questionMenu}>
+                          <button className={styles.moreBtn}>⋯</button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Question Form */}
+              <div className={styles.questionForm}>
+                <div className={styles.formRow}>
+                  <div className={styles.formGroup}>
+                    <label>Type</label>
+                    <select
+                      value={questionForm.type}
+                      onChange={(e) => setQuestionForm({ ...questionForm, type: e.target.value })}
+                    >
+                      <option value="multiple_choice">Multiple Choice</option>
+                    </select>
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>Points</label>
+                    <input
+                      type="number"
+                      value={questionForm.points}
+                      onChange={(e) => setQuestionForm({ ...questionForm, points: parseInt(e.target.value) })}
+                      min="1"
+                      max="10"
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>Position</label>
+                    <input
+                      type="number"
+                      value={questionForm.position}
+                      onChange={(e) => setQuestionForm({ ...questionForm, position: parseInt(e.target.value) })}
+                      min="1"
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label>Prompt</label>
+                  <textarea
+                    value={questionForm.text}
+                    onChange={(e) => setQuestionForm({ ...questionForm, text: e.target.value })}
+                    placeholder="Enter your question here..."
+                    rows="3"
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label>Image (optional)</label>
+                  <div className={styles.imageUpload}>
+                    <input
+                      type="text"
+                      value={questionForm.image_url}
+                      onChange={(e) => setQuestionForm({ ...questionForm, image_url: e.target.value })}
+                      placeholder="Image URL or upload an image"
+                    />
+                    <button className={styles.uploadBtn}>Upload</button>
+                  </div>
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label>Answer choices</label>
+                  <div className={styles.choicesGrid}>
+                    {questionForm.choices.map((choice, index) => (
+                      <div key={index} className={styles.choiceRow}>
+                        <div className={styles.choiceLabel}>
+                          {String.fromCharCode(65 + index)})
+                        </div>
+                        <input
+                          type="text"
+                          value={choice.text}
+                          onChange={(e) => {
+                            const newChoices = [...questionForm.choices];
+                            newChoices[index] = { ...choice, text: e.target.value };
+                            setQuestionForm({ ...questionForm, choices: newChoices });
+                          }}
+                          placeholder="Choice text"
+                        />
+                        <button
+                          className={`${styles.correctBtn} ${choice.is_correct ? styles.correct : ""}`}
+                          onClick={() => {
+                            const newChoices = [...questionForm.choices];
+                            newChoices[index] = { ...choice, is_correct: !choice.is_correct };
+                            setQuestionForm({ ...questionForm, choices: newChoices });
+                          }}
+                        >
+                          Mark correct
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className={styles.questionFormActions}>
+                  <button className={styles.deleteQuestionBtn}>Delete</button>
+                  <button className={styles.saveDraftBtn} onClick={cancelQuestionEdit}>
+                    Save draft
+                  </button>
+                  <button 
+                    className={styles.saveQuestionBtn} 
+                    onClick={saveQuestion}
+                    disabled={!questionForm.text.trim()}
+                  >
+                    {editingQuestion ? (selectedQuestion ? "Save question" : "Save question") : "Save question"}
+                  </button>
+                </div>
               </div>
             </div>
           )}

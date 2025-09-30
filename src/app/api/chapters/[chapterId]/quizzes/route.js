@@ -9,7 +9,7 @@ export async function GET(req, { params }) {
     let builder = supabaseAdmin
       .from("quizzes")
       .select(
-        "id, title, description, questions(id, position, text, type, points, image, choices(id, text, is_correct))"
+        "id, title, description, questions(id, position, text, type, points, image, published, choices(id, text, is_correct))"
       )
       .eq("chapter_id", chapterId);
 
@@ -19,28 +19,34 @@ export async function GET(req, { params }) {
     const { data: quizzes, error } = await builder;
     if (error) throw error;
 
+    // Filter questions to only include published ones for student-facing pages
+    const filteredQuizzes = quizzes?.map(quiz => ({
+      ...quiz,
+      questions: quiz.questions?.filter(question => question.published === true) || []
+    })) || [];
+
     // Debug logging: show how many quizzes and how many questions each has
     try {
       console.log(
         `API: /api/chapters/${chapterId}/quizzes returned ${
-          Array.isArray(quizzes) ? quizzes.length : 0
+          Array.isArray(filteredQuizzes) ? filteredQuizzes.length : 0
         } quizzes`
       );
-      if (Array.isArray(quizzes) && quizzes.length > 0) {
-        quizzes.forEach((q, idx) => {
+      if (Array.isArray(filteredQuizzes) && filteredQuizzes.length > 0) {
+        filteredQuizzes.forEach((q, idx) => {
           console.log(
             `quiz[${idx}].id=${q.id} title=${q.title} questions=${
               Array.isArray(q.questions) ? q.questions.length : 0
-            }`
+            } (published only)`
           );
         });
-        console.log("first quiz sample:", JSON.stringify(quizzes[0], null, 2));
+        console.log("first quiz sample:", JSON.stringify(filteredQuizzes[0], null, 2));
       }
     } catch (logErr) {
       console.warn("Failed to log quizzes debug info", logErr);
     }
 
-    return new Response(JSON.stringify(quizzes || []), {
+    return new Response(JSON.stringify(filteredQuizzes || []), {
       status: 200,
       headers: { "content-type": "application/json" },
     });
