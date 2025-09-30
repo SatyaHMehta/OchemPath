@@ -1,23 +1,87 @@
 import supabaseAdmin from "@/lib/supabaseServer";
 
-export async function PUT(request, { params }) {
+export async function GET(request, { params }) {
   try {
     const { id } = params;
-    const body = await request.json();
+
     const { data, error } = await supabaseAdmin
       .from("chapters")
-      .update(body)
+      .select("*")
       .eq("id", id)
-      .select()
       .single();
-    if (error) throw error;
+
+    if (error) {
+      if (error.code === "PGRST116") {
+        return new Response(JSON.stringify({ error: "Chapter not found" }), {
+          status: 404,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      throw error;
+    }
+
     return new Response(JSON.stringify(data), {
       status: 200,
       headers: { "content-type": "application/json" },
     });
   } catch (err) {
+    console.error("Error fetching chapter:", err);
     return new Response(JSON.stringify({ error: err.message || String(err) }), {
-      status: 400,
+      status: 500,
+      headers: { "content-type": "application/json" },
+    });
+  }
+}
+
+export async function PUT(request, { params }) {
+  try {
+    const { id } = params;
+    const body = await request.json();
+    const { title, description, video_url, position } = body;
+
+    if (!title) {
+      return new Response(JSON.stringify({ error: "title is required" }), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      });
+    }
+
+    const updateData = {
+      title,
+      description: description || null,
+      video_url: video_url || null,
+    };
+
+    // Only update position if provided
+    if (position !== undefined) {
+      updateData.position = position;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("chapters")
+      .update(updateData)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") {
+        return new Response(JSON.stringify({ error: "Chapter not found" }), {
+          status: 404,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      throw error;
+    }
+
+    return new Response(JSON.stringify(data), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  } catch (err) {
+    console.error("Error updating chapter:", err);
+    return new Response(JSON.stringify({ error: err.message || String(err) }), {
+      status: 500,
       headers: { "content-type": "application/json" },
     });
   }
@@ -26,15 +90,81 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     const { id } = params;
-    const { error } = await supabaseAdmin
+
+    // First check if chapter exists
+    const { data: existingChapter, error: fetchError } = await supabaseAdmin
+      .from("chapters")
+      .select("id")
+      .eq("id", id)
+      .single();
+
+    if (fetchError) {
+      if (fetchError.code === "PGRST116") {
+        return new Response(JSON.stringify({ error: "Chapter not found" }), {
+          status: 404,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      throw fetchError;
+    }
+
+    // Delete related data first (questions, quizzes, etc.)
+    // Get all quiz IDs for this chapter
+    const { data: quizzes } = await supabaseAdmin
+      .from("quizzes")
+      .select("id")
+      .eq("chapter_id", id);
+
+    if (quizzes && quizzes.length > 0) {
+      const quizIds = quizzes.map((q) => q.id);
+
+      // Delete choices first, then questions
+      const { error: choicesError } = await supabaseAdmin
+        .from("choices")
+        .delete()
+        .in(
+          "question_id",
+          supabaseAdmin.from("questions").select("id").in("quiz_id", quizIds)
+        );
+
+      if (choicesError) {
+        console.warn("Error deleting related choices:", choicesError);
+      }
+
+      // Delete questions
+      const { error: questionsError } = await supabaseAdmin
+        .from("questions")
+        .delete()
+        .in("quiz_id", quizIds);
+
+      if (questionsError) {
+        console.warn("Error deleting related questions:", questionsError);
+      }
+
+      // Delete quizzes
+      const { error: quizzesError } = await supabaseAdmin
+        .from("quizzes")
+        .delete()
+        .eq("chapter_id", id);
+
+      if (quizzesError) {
+        console.warn("Error deleting related quizzes:", quizzesError);
+      }
+    }
+
+    // Finally delete the chapter
+    const { error: deleteError } = await supabaseAdmin
       .from("chapters")
       .delete()
       .eq("id", id);
-    if (error) throw error;
+
+    if (deleteError) throw deleteError;
+
     return new Response(null, { status: 204 });
   } catch (err) {
+    console.error("Error deleting chapter:", err);
     return new Response(JSON.stringify({ error: err.message || String(err) }), {
-      status: 400,
+      status: 500,
       headers: { "content-type": "application/json" },
     });
   }

@@ -63,6 +63,24 @@
   margin: 0;
 }
 
+.chapterDescription {
+  color: #9dd1ff;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+  padding: 0;
+  opacity: 0.9;
+}
+
+.noVideo {
+  padding: 20px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 8px;
+  text-align: center;
+  color: #8b949e;
+  font-style: italic;
+}
+
 .videos {
   display:grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));

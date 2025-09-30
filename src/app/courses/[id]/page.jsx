@@ -41,28 +41,57 @@ export async function generateStaticParams() {
 
 async function fetchCourseFromDb(id) {
   try {
-    const { data, error } = await supabaseAdmin
+    // First get the course info
+    const { data: courseData, error: courseError } = await supabaseAdmin
       .from("courses")
-      .select(
-        "id, title, description, image_url, chapters(id, position, title, video_url)"
-      )
+      .select("id, title, description, image_url")
       .eq("id", id)
       .single();
-    if (error) throw error;
+    
+    if (courseError) throw courseError;
+
+    // Then get published chapters separately
+    const { data: chaptersData, error: chaptersError } = await supabaseAdmin
+      .from("chapters")
+      .select("id, position, title, description, video_url, published")
+      .eq("course_id", id)
+      .eq("published", true) // Only show published chapters
+      .order("position", { ascending: true });
+
+    if (chaptersError) throw chaptersError;
+
+    const data = {
+      ...courseData,
+      chapters: chaptersData || []
+    };
 
     const rawChapters = data.chapters || [];
     const chapters = rawChapters.map((ch, idx) => {
-      const videos = ch.video_url
-        ? [{ id: ch.video_url, title: ch.title }]
-        : [
-            {
-              id: pickYouTubeId(`${data.id}-${ch.id || idx}`),
-              title: ch.title || "Lecture",
-            },
-          ];
+      // Extract YouTube video ID from URL if it exists
+      let videoId = null;
+      if (ch.video_url) {
+        const urlMatch = ch.video_url.match(
+          /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/
+        );
+        videoId = urlMatch
+          ? urlMatch[1]
+          : pickYouTubeId(`${data.id}-${ch.id || idx}`);
+      } else {
+        videoId = pickYouTubeId(`${data.id}-${ch.id || idx}`);
+      }
+
+      const videos = [
+        {
+          id: videoId,
+          title: ch.title || "Lecture",
+          url: ch.video_url,
+        },
+      ];
+
       return {
         id: ch.id,
         title: ch.title,
+        description: ch.description,
         position: ch.position,
         videos,
       };
@@ -123,30 +152,40 @@ export default async function CoursePage({ params }) {
         {course.chapters.map((ch) => (
           <section key={ch.id} className={styles.chapter}>
             <h2 className={styles.chapterTitle}>{ch.title}</h2>
-            <div className={styles.videos}>
-              {ch.videos.map((v) => (
-                <div key={v.id} className={styles.videoCard}>
-                  <div className={styles.videoTitle}>{v.title}</div>
-                  <div className={styles.player}>
-                    <iframe
-                      src={`https://www.youtube.com/embed/${v.id}`}
-                      title={v.title}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                    ></iframe>
+            {ch.description && (
+              <p className={styles.chapterDescription}>{ch.description}</p>
+            )}
+            {ch.videos && ch.videos.length > 0 && ch.videos[0].url && (
+              <div className={styles.videos}>
+                {ch.videos.map((v) => (
+                  <div key={v.id} className={styles.videoCard}>
+                    <div className={styles.videoTitle}>{v.title}</div>
+                    <div className={styles.player}>
+                      <iframe
+                        src={`https://www.youtube.com/embed/${v.id}`}
+                        title={v.title}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                      ></iframe>
+                    </div>
+                    <div className={styles.videoActions}>
+                      <a
+                        href={`https://www.youtube.com/watch?v=${v.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Open on YouTube
+                      </a>
+                    </div>
                   </div>
-                  <div className={styles.videoActions}>
-                    <a
-                      href={`https://www.youtube.com/watch?v=${v.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Open on YouTube
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
+            {(!ch.videos || !ch.videos[0]?.url) && (
+              <div className={styles.noVideo}>
+                <p>No video available for this chapter yet.</p>
+              </div>
+            )}
             <div className={styles.chapterActions}>
               <Link
                 href={`/courses/${course.id}/chapter/${ch.id}/practice`}

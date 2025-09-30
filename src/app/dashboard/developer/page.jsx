@@ -174,6 +174,7 @@ function ChapterList({ courseId, onChange }) {
           <li key={ch.id}>
             {ch.position}. {ch.title} — {ch.video_url}
             <button onClick={() => delChapter(ch.id)}>Delete</button>
+            <QuestionsManager chapterId={ch.id} />
           </li>
         ))}
       </ul>
@@ -194,6 +195,191 @@ function ChapterList({ courseId, onChange }) {
           onChange={(e) => setForm({ ...form, video_url: e.target.value })}
         />
         <button type="submit">Add chapter</button>
+      </form>
+    </div>
+  );
+}
+
+function QuestionsManager({ chapterId }) {
+  const [questions, setQuestions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    text: "",
+    type: "multiple_choice",
+    points: 1,
+    image: "",
+    choices: [
+      { text: "", is_correct: false },
+      { text: "", is_correct: true },
+    ],
+  });
+  const [editing, setEditing] = useState(null);
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function load() {
+    setLoading(true);
+    const res = await fetch(`/api/admin/questions?chapter_id=${chapterId}`);
+    const data = await res.json();
+    setQuestions(data || []);
+    setLoading(false);
+  }
+
+  async function submit(e) {
+    e.preventDefault();
+    const payload = {
+      chapter_id: chapterId,
+      text: form.text,
+      type: form.type,
+      points: Number(form.points),
+      image: form.image,
+      choices: form.choices,
+    };
+    if (editing) {
+      await fetch(`/api/admin/questions/${editing}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+        headers: { "content-type": "application/json" },
+      });
+    } else {
+      await fetch("/api/admin/questions", {
+        method: "POST",
+        body: JSON.stringify(payload),
+        headers: { "content-type": "application/json" },
+      });
+    }
+    setForm({
+      text: "",
+      type: "multiple_choice",
+      points: 1,
+      image: "",
+      choices: [
+        { text: "", is_correct: false },
+        { text: "", is_correct: true },
+      ],
+    });
+    setEditing(null);
+    await load();
+  }
+
+  function startEdit(q) {
+    setEditing(q.id);
+    setForm({
+      text: q.text || "",
+      type: q.type || "multiple_choice",
+      points: q.points || 1,
+      image: q.image || "",
+      choices: (q.choices || []).map((c) => ({
+        text: c.text,
+        is_correct: !!c.is_correct,
+      })),
+    });
+  }
+
+  async function del(id) {
+    if (!confirm("Delete question?")) return;
+    await fetch(`/api/admin/questions/${id}`, { method: "DELETE" });
+    await load();
+  }
+
+  return (
+    <div style={{ marginTop: 8, borderTop: "1px solid #eee", paddingTop: 8 }}>
+      <h5>Practice Questions</h5>
+      {loading ? (
+        <div>Loading…</div>
+      ) : (
+        <ul>
+          {questions.map((q) => (
+            <li key={q.id}>
+              {q.position}. {q.text} {q.image ? "(image)" : ""}
+              <button onClick={() => startEdit(q)}>Edit</button>
+              <button onClick={() => del(q.id)}>Delete</button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <form onSubmit={submit} style={{ marginTop: 8 }}>
+        <input
+          placeholder="Question text"
+          value={form.text}
+          onChange={(e) => setForm({ ...form, text: e.target.value })}
+          required
+        />
+        <input
+          placeholder="Image path (optional)"
+          value={form.image}
+          onChange={(e) => setForm({ ...form, image: e.target.value })}
+        />
+        <input
+          placeholder="Points"
+          value={form.points}
+          onChange={(e) => setForm({ ...form, points: e.target.value })}
+        />
+        <div>
+          <strong>Choices</strong>
+          {(form.choices || []).map((c, idx) => (
+            <div key={idx}>
+              <input
+                placeholder="choice"
+                value={c.text}
+                onChange={(e) => {
+                  const cs = [...form.choices];
+                  cs[idx].text = e.target.value;
+                  setForm({ ...form, choices: cs });
+                }}
+              />
+              <label>
+                <input
+                  type="checkbox"
+                  checked={!!c.is_correct}
+                  onChange={(e) => {
+                    const cs = [...form.choices];
+                    cs[idx].is_correct = e.target.checked;
+                    setForm({ ...form, choices: cs });
+                  }}
+                />{" "}
+                correct
+              </label>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() =>
+              setForm({
+                ...form,
+                choices: [...form.choices, { text: "", is_correct: false }],
+              })
+            }
+          >
+            Add choice
+          </button>
+        </div>
+        <div>
+          <button type="submit">{editing ? "Save" : "Add question"}</button>
+          {editing && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(null);
+                setForm({
+                  text: "",
+                  type: "multiple_choice",
+                  points: 1,
+                  image: "",
+                  choices: [
+                    { text: "", is_correct: false },
+                    { text: "", is_correct: true },
+                  ],
+                });
+              }}
+            >
+              Cancel
+            </button>
+          )}
+        </div>
       </form>
     </div>
   );

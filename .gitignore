@@ -77,3 +77,7 @@ next-env.d.ts
 # local deploy keys created for CI/agent pushes
 .github_deploy_key
 .github_deploy_key.pub
+
+# development temporary files
+tmp/
+*.tmp

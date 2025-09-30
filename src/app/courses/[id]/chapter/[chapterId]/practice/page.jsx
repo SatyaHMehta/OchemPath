@@ -8,15 +8,17 @@ export default function PracticePage({ params }) {
 
   const [course, setCourse] = useState(null);
   const [chapter, setChapter] = useState(null);
-  const [questions, setQuestions] = useState(null);
+  const [questions, setQuestions] = useState(null); // null = loading, [] = loaded but empty
   const [answers, setAnswers] = useState({});
   const [checked, setChecked] = useState(false);
   const [zoomImage, setZoomImage] = useState(null);
+  const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
     async function load() {
+      setLoadError(null);
       try {
-        // Try to fetch course metadata (optional)
+        // Optional: fetch course metadata so header shows names (non-fatal)
         try {
           const base =
             process.env.NEXT_PUBLIC_BASE_URL ||
@@ -37,68 +39,77 @@ export default function PracticePage({ params }) {
             );
           }
         } catch (e) {
-          // non-fatal
+          // ignore metadata failures
+          console.warn("Failed loading course metadata", e);
         }
 
-        // Load quizzes for chapter
-        const res = await fetch(`/api/chapters/${chapterId}/quizzes`);
+        // Load practice quiz first
+        let quizzes = [];
+        let res = await fetch(
+          `/api/chapters/${chapterId}/quizzes?practice=true`
+        );
         if (res.ok) {
-          const quizzes = await res.json();
-          const quiz =
-            Array.isArray(quizzes) && quizzes.length ? quizzes[0] : null;
-          if (quiz && Array.isArray(quiz.questions)) {
-            const mapped = quiz.questions.map((q) => {
-              const opts = (q.choices || []).map((c) => c.text);
-              const correctIndex = (q.choices || []).findIndex(
-                (c) => c.is_correct
-              );
-              return {
-                id: q.id,
-                text: q.text,
-                options: opts.length ? opts : ["True", "False"],
-                correctIndex: correctIndex >= 0 ? correctIndex : null,
-                image: q.image || null,
-              };
-            });
-            setQuestions(mapped);
-            return;
+          quizzes = await res.json();
+        } else {
+          const text = await res.text().catch(() => null);
+          console.warn(
+            "Practice fetch failed",
+            res.status,
+            res.statusText,
+            text
+          );
+        }
+
+        // If no practice quizzes, fall back to any quiz for the chapter
+        if (!Array.isArray(quizzes) || quizzes.length === 0) {
+          res = await fetch(`/api/chapters/${chapterId}/quizzes`);
+          if (res.ok) {
+            quizzes = await res.json();
+          } else {
+            const text = await res.text().catch(() => null);
+            console.warn("Chapter quizzes fetch failed", res.status, text);
           }
         }
+
+        const quiz =
+          Array.isArray(quizzes) && quizzes.length ? quizzes[0] : null;
+        if (quiz && Array.isArray(quiz.questions)) {
+          const mapped = quiz.questions.map((q) => {
+            const opts = (q.choices || []).map((c) => c.text);
+            const correctIndex = (q.choices || []).findIndex(
+              (c) => c.is_correct
+            );
+            return {
+              id: q.id,
+              text: q.text,
+              options: opts.length ? opts : ["True", "False"],
+              correctIndex: correctIndex >= 0 ? correctIndex : null,
+              image: q.image || null,
+            };
+          });
+          setQuestions(mapped);
+          setLoadError(null);
+          return;
+        }
+
+        // no quiz found -> empty list and error message for debugging
+        console.warn(
+          "No practice or chapter quizzes found for chapter",
+          chapterId
+        );
+        setLoadError("No practice or chapter quizzes found for this chapter");
+        setQuestions([]);
       } catch (e) {
         console.warn("Failed loading quizzes", e);
+        setLoadError(String(e));
+        setQuestions([]);
       }
-
-      // fallback mock questions
-      setQuestions([
-        {
-          id: "m-1",
-          text: "Identify the aromatic ring shown (ignore substituents).",
-          options: ["Cyclohexane", "Benzene", "Phenol", "Pyridine"],
-          correctIndex: 1,
-          image: "/images/chemistry-right.svg",
-        },
-        {
-          id: "m-2",
-          text: "Which hybridization most describes the carbon atoms in ethene?",
-          options: ["sp^3", "sp^2", "sp", "It depends on resonance"],
-          correctIndex: 1,
-        },
-        {
-          id: "m-3",
-          text: "Which statement about electronegativity and bond polarity is TRUE?",
-          options: [
-            "Bonds between identical atoms are always polar.",
-            "Greater electronegativity difference increases bond polarity.",
-            "A polar bond always makes the whole molecule polar.",
-            "Electronegativity is unrelated to electron density.",
-          ],
-          correctIndex: 1,
-        },
-      ]);
     }
 
+    // reset transient UI state and load
     setAnswers({});
     setChecked(false);
+    setQuestions(null);
     load();
   }, [id, chapterId]);
 
@@ -110,7 +121,17 @@ export default function PracticePage({ params }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [zoomImage]);
 
-  if (!questions) return <div className={styles.notFound}>Loading…</div>;
+  if (questions === null)
+    return <div className={styles.notFound}>Loading…</div>;
+  if (Array.isArray(questions) && questions.length === 0)
+    return (
+      <div className={styles.notFound}>
+        <h3>No practice questions found</h3>
+        <p>
+          {loadError ?? "There are no practice questions for this chapter yet."}
+        </p>
+      </div>
+    );
 
   const select = (qid, optIndex) => {
     if (checked) return;

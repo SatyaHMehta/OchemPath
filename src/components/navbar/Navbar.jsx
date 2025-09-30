@@ -35,7 +35,7 @@ const Navbar = () => {
     { id: 1, title: "Home", url: "/" },
     { id: 2, title: "Courses", url: "/courses" },
     { id: 4, title: "Quiz", url: "/quiz" },
-    { id: 3, title: "Dashboard", url: "/dashboard" },
+    { id: 3, title: "Dashboard", url: "/dashboard/creator" },
   ];
 
   return (

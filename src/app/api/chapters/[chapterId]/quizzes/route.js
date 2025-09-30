@@ -3,13 +3,43 @@ import supabaseAdmin from "@/lib/supabaseServer";
 export async function GET(req, { params }) {
   const { chapterId } = params;
   try {
-    const { data: quizzes, error } = await supabaseAdmin
+    const url = new URL(req.url);
+    const practiceParam = url.searchParams.get("practice"); // 'true' | 'false' | null
+
+    let builder = supabaseAdmin
       .from("quizzes")
       .select(
-        "id, title, description, questions(id, position, text, type, points, choices(id, text, is_correct))"
+        "id, title, description, questions(id, position, text, type, points, image, choices(id, text, is_correct))"
       )
       .eq("chapter_id", chapterId);
+
+    if (practiceParam === "true") builder = builder.eq("is_practice", true);
+    if (practiceParam === "false") builder = builder.eq("is_practice", false);
+
+    const { data: quizzes, error } = await builder;
     if (error) throw error;
+
+    // Debug logging: show how many quizzes and how many questions each has
+    try {
+      console.log(
+        `API: /api/chapters/${chapterId}/quizzes returned ${
+          Array.isArray(quizzes) ? quizzes.length : 0
+        } quizzes`
+      );
+      if (Array.isArray(quizzes) && quizzes.length > 0) {
+        quizzes.forEach((q, idx) => {
+          console.log(
+            `quiz[${idx}].id=${q.id} title=${q.title} questions=${
+              Array.isArray(q.questions) ? q.questions.length : 0
+            }`
+          );
+        });
+        console.log("first quiz sample:", JSON.stringify(quizzes[0], null, 2));
+      }
+    } catch (logErr) {
+      console.warn("Failed to log quizzes debug info", logErr);
+    }
+
     return new Response(JSON.stringify(quizzes || []), {
       status: 200,
       headers: { "content-type": "application/json" },
