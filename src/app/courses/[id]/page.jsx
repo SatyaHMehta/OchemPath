@@ -41,6 +41,8 @@ export async function generateStaticParams() {
 
 async function fetchCourseFromDb(id) {
   try {
+    console.log("Fetching course with ID:", id);
+    
     // First get the course info
     const { data: courseData, error: courseError } = await supabaseAdmin
       .from("courses")
@@ -48,7 +50,12 @@ async function fetchCourseFromDb(id) {
       .eq("id", id)
       .single();
     
-    if (courseError) throw courseError;
+    if (courseError) {
+      console.error("Course fetch error:", courseError);
+      throw courseError;
+    }
+    
+    console.log("Course data fetched:", courseData);
 
     // Then get published chapters separately
     const { data: chaptersData, error: chaptersError } = await supabaseAdmin
@@ -58,13 +65,46 @@ async function fetchCourseFromDb(id) {
       .eq("published", true) // Only show published chapters
       .order("position", { ascending: true });
 
-    if (chaptersError) throw chaptersError;
+    if (chaptersError) {
+      console.error("Chapters fetch error:", chaptersError);
+      // If published column doesn't exist, try without the published filter
+      if (chaptersError.code === 'PGRST116' || chaptersError.message?.includes('published')) {
+        console.log("Published column missing, fetching all chapters...");
+        const { data: allChaptersData, error: allChaptersError } = await supabaseAdmin
+          .from("chapters")
+          .select("id, position, title, description, video_url")
+          .eq("course_id", id)
+          .order("position", { ascending: true });
+        
+        if (allChaptersError) throw allChaptersError;
+        console.log("All chapters fetched (no published filter):", allChaptersData);
+        
+        const data = {
+          ...courseData,
+          chapters: allChaptersData || []
+        };
+        
+        return buildCourseResponse(data);
+      }
+      throw chaptersError;
+    }
+    
+    console.log("Published chapters fetched:", chaptersData);
 
     const data = {
       ...courseData,
       chapters: chaptersData || []
     };
 
+    return buildCourseResponse(data);
+  } catch (err) {
+    console.error("fetchCourseFromDb error:", err);
+    return null;
+  }
+}
+
+function buildCourseResponse(data) {
+  try {
     const rawChapters = data.chapters || [];
     const chapters = rawChapters.map((ch, idx) => {
       // Extract YouTube video ID from URL if it exists
@@ -104,9 +144,10 @@ async function fetchCourseFromDb(id) {
       logo: data.image_url || null,
       chapters,
     };
+    console.log("Shaped course data:", shaped);
     return shaped;
   } catch (err) {
-    console.warn("fetchCourseFromDb error", err?.message || err);
+    console.error("buildCourseResponse error:", err);
     return null;
   }
 }
