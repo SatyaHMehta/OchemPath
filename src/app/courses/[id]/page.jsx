@@ -42,8 +42,26 @@ export async function generateStaticParams() {
 async function fetchCourseFromDb(id) {
   try {
     console.log("Fetching course with ID:", id);
+    console.log("Environment:", process.env.NODE_ENV);
+    console.log("Supabase URL available:", !!process.env.NEXT_PUBLIC_SUPABASE_URL);
+    console.log("Supabase Service Key available:", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+    
+    // Test database connection first
+    console.log("Testing database connection...");
+    const connectionTest = await supabaseAdmin
+      .from("courses")
+      .select("count")
+      .limit(1);
+    
+    console.log("Database connection test result:", connectionTest);
+    
+    if (connectionTest.error) {
+      console.error("Database connection failed:", connectionTest.error);
+      throw new Error(`Database connection failed: ${connectionTest.error.message}`);
+    }
     
     // First get the course info
+    console.log("Attempting to fetch course data...");
     const { data: courseData, error: courseError } = await supabaseAdmin
       .from("courses")
       .select("id, title, description, image_url")
@@ -52,12 +70,37 @@ async function fetchCourseFromDb(id) {
     
     if (courseError) {
       console.error("Course fetch error:", courseError);
+      console.error("Course error details:", JSON.stringify(courseError, null, 2));
       throw courseError;
     }
     
-    console.log("Course data fetched:", courseData);
+    if (!courseData) {
+      console.error("No course data returned for ID:", id);
+      throw new Error("Course not found");
+    }
+    
+    console.log("Course data fetched successfully:", courseData);
+
+    // Test chapters table structure first
+    console.log("Testing chapters table structure...");
+    const chaptersTest = await supabaseAdmin
+      .from("chapters")
+      .select("*")
+      .limit(1);
+    
+    console.log("Chapters table test:", chaptersTest);
+    
+    if (chaptersTest.error) {
+      console.error("Chapters table access error:", chaptersTest.error);
+      throw new Error(`Cannot access chapters table: ${chaptersTest.error.message}`);
+    }
+    
+    if (chaptersTest.data && chaptersTest.data.length > 0) {
+      console.log("Available chapters columns:", Object.keys(chaptersTest.data[0]));
+    }
 
     // Then get published chapters separately
+    console.log("Attempting to fetch chapters with published filter...");
     const { data: chaptersData, error: chaptersError } = await supabaseAdmin
       .from("chapters")
       .select("id, position, title, description, video_url, published")
@@ -67,6 +110,8 @@ async function fetchCourseFromDb(id) {
 
     if (chaptersError) {
       console.error("Chapters fetch error:", chaptersError);
+      console.error("Chapters error details:", JSON.stringify(chaptersError, null, 2));
+      
       // If published column doesn't exist, try without the published filter
       if (chaptersError.code === 'PGRST116' || chaptersError.message?.includes('published')) {
         console.log("Published column missing, fetching all chapters...");
@@ -76,7 +121,10 @@ async function fetchCourseFromDb(id) {
           .eq("course_id", id)
           .order("position", { ascending: true });
         
-        if (allChaptersError) throw allChaptersError;
+        if (allChaptersError) {
+          console.error("All chapters fetch also failed:", allChaptersError);
+          throw allChaptersError;
+        }
         console.log("All chapters fetched (no published filter):", allChaptersData);
         
         const data = {
@@ -89,7 +137,7 @@ async function fetchCourseFromDb(id) {
       throw chaptersError;
     }
     
-    console.log("Published chapters fetched:", chaptersData);
+    console.log("Published chapters fetched successfully:", chaptersData);
 
     const data = {
       ...courseData,
@@ -99,7 +147,18 @@ async function fetchCourseFromDb(id) {
     return buildCourseResponse(data);
   } catch (err) {
     console.error("fetchCourseFromDb error:", err);
-    return null;
+    console.error("Error message:", err.message);
+    console.error("Error stack:", err.stack);
+    console.error("Error name:", err.name);
+    
+    // Return safe fallback data instead of null to prevent crashes
+    return {
+      id: id,
+      name: "Course Loading Error",
+      description: "There was an error loading this course. Please check the console for details.",
+      logo: null,
+      chapters: []
+    };
   }
 }
 
@@ -148,7 +207,16 @@ function buildCourseResponse(data) {
     return shaped;
   } catch (err) {
     console.error("buildCourseResponse error:", err);
-    return null;
+    console.error("Error processing data:", data);
+    
+    // Return safe fallback instead of null
+    return {
+      id: data?.id || "unknown",
+      name: data?.title || "Error Loading Course",
+      description: data?.description || "There was an error processing this course data.",
+      logo: data?.image_url || null,
+      chapters: []
+    };
   }
 }
 
@@ -159,8 +227,13 @@ export default async function CoursePage({ params }) {
   let course = await fetchCourseFromDb(id);
 
   // If not in DB, don't fall back to static data; show not found.
-
-  if (!course) return <div className={styles.notFound}>Course not found</div>;
+  if (!course) {
+    console.error("No course data available for ID:", id);
+    return <div className={styles.notFound}>Course not found</div>;
+  }
+  
+  // Log the final course data being rendered
+  console.log("Rendering course:", course.name, "with", course.chapters?.length || 0, "chapters");
 
   return (
     <div className={styles.container}>
