@@ -54,7 +54,6 @@ const IRATQuiz = () => {
     // Calculate score
     let totalQuestions = questions.length;
     let correctAnswers = 0;
-    console.log(selectedAnswers)
     questions.forEach((question) => {
       if (selectedAnswers[question.id] === question.correctAnswer) {
         correctAnswers++;

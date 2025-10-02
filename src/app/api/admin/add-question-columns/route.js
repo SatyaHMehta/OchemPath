@@ -5,7 +5,7 @@ export async function POST(request) {
     console.log("Attempting to add published column to questions table...");
 
     // Try to add the published column
-    const { error } = await supabaseAdmin.rpc('exec', {
+    const { error } = await supabaseAdmin.rpc("exec", {
       sql: `
         ALTER TABLE questions 
         ADD COLUMN IF NOT EXISTS published boolean DEFAULT false;
@@ -19,7 +19,7 @@ export async function POST(request) {
         COMMENT ON COLUMN questions.published IS 'Whether the question is published and visible to students';
         COMMENT ON COLUMN questions.chapter_id IS 'Direct reference to chapter for practice questions';
         COMMENT ON COLUMN questions.is_practice IS 'Whether this is a practice question';
-      `
+      `,
     });
 
     if (error) {
@@ -29,16 +29,16 @@ export async function POST(request) {
 
     console.log("Successfully added columns to questions table");
 
-    return Response.json({ 
-      success: true, 
-      message: "Published, chapter_id, and is_practice columns added to questions table" 
-    }, { status: 200 });
-
+    return Response.json(
+      {
+        success: true,
+        message:
+          "Published, chapter_id, and is_practice columns added to questions table",
+      },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Server error adding columns:", error);
-    return Response.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }

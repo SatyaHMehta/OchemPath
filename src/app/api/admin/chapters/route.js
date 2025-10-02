@@ -20,7 +20,21 @@ export async function GET(request) {
 
     if (error) throw error;
 
-    return new Response(JSON.stringify(data || []), {
+    // Collapse originals when a draft exists
+    const draftsByOriginal = new Map();
+    (data || []).forEach((c) => {
+      if (c.draft_of) draftsByOriginal.set(c.draft_of, c);
+    });
+    const collapsed = [];
+    (data || []).forEach((c) => {
+      if (c.draft_of) {
+        collapsed.push(c);
+      } else if (!draftsByOriginal.has(c.id)) {
+        collapsed.push(c);
+      }
+    });
+
+    return new Response(JSON.stringify(collapsed), {
       status: 200,
       headers: { "content-type": "application/json" },
     });
@@ -36,7 +50,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { course_id, position, title, description, video_url } = body;
+  const { course_id, position, title, description, video_url, draft_of = null } = body;
 
     if (!course_id || !title) {
       return new Response(
@@ -53,7 +67,8 @@ export async function POST(request) {
         title,
         description: description || null,
         video_url: video_url || null,
-        published: false, // Always create as draft
+        published: false, // Draft by default
+        draft_of, // Link to original if this is a draft edit of an existing chapter
       })
       .select()
       .single();

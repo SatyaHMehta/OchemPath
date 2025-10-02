@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import styles from "./page.module.css";
+import ImageUpload from "@/components/ImageUpload/ImageUpload";
 
 export default function CreatorDashboard() {
   const [activeView, setActiveView] = useState("overview");
@@ -79,9 +80,29 @@ export default function CreatorDashboard() {
         <header className={styles.header}>
           <div className={styles.headerLeft}>
             {selectedCourse && selectedChapter ? (
-              <h1>Chapter {selectedChapter.position} • Question Builder</h1>
+              <>
+                <button
+                  className={styles.backBtn}
+                  onClick={() => setSelectedChapter(null)}
+                >
+                  ← Back to Chapter {selectedChapter.position}
+                </button>
+                <h1>Chapter {selectedChapter.position} • Question Builder</h1>
+              </>
             ) : selectedCourse ? (
-              <h1>{selectedCourse.title} — Course Manager</h1>
+              <>
+                <button
+                  className={styles.backBtn}
+                  onClick={() => {
+                    setSelectedCourse(null);
+                    setActiveView("overview");
+                    loadCourses();
+                  }}
+                >
+                  ← Back to Courses
+                </button>
+                <h1>{selectedCourse.title} — Course Manager</h1>
+              </>
             ) : (
               <h1>Courses</h1>
             )}
@@ -94,17 +115,8 @@ export default function CreatorDashboard() {
         </header>
 
         {/* Content based on active view */}
-        {activeView === "overview" ||
-        activeView === "courses" ||
-        activeView === "course" ? (
-          selectedCourse && selectedChapter ? (
-            <QuestionBuilder
-              course={selectedCourse}
-              chapter={selectedChapter}
-              questionType={questionType}
-              onBack={() => setSelectedChapter(null)}
-            />
-          ) : selectedCourse ? (
+        {activeView === "overview" || activeView === "courses" || activeView === "course" ? (
+          selectedCourse ? (
             <CourseManager
               course={selectedCourse}
               onBack={() => {
@@ -252,7 +264,7 @@ function CourseManager({ course, onBack, onSelectChapter }) {
   const [chapters, setChapters] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedChapter, setSelectedChapter] = useState(null);
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(false); // Track if editing chapter
 
   // Practice questions state
   const [practiceQuestions, setPracticeQuestions] = useState([]);
@@ -261,6 +273,7 @@ function CourseManager({ course, onBack, onSelectChapter }) {
   const [editingQuestion, setEditingQuestion] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [validationMessage, setValidationMessage] = useState("");
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const [chapterForm, setChapterForm] = useState({
     title: "",
@@ -268,6 +281,9 @@ function CourseManager({ course, onBack, onSelectChapter }) {
     video_url: "",
     position: 1,
   });
+  const [editingChapter, setEditingChapter] = useState(false);
+  const [hasChapterUnsavedChanges, setHasChapterUnsavedChanges] = useState(false);
+  const [chapterErrors, setChapterErrors] = useState({});
 
   const [questionForm, setQuestionForm] = useState({
     text: "",
@@ -275,13 +291,13 @@ function CourseManager({ course, onBack, onSelectChapter }) {
     points: 2,
     position: 1,
     image_url: "",
-    published: false,
+    published: true, // Default new questions to published
     choices: [
-      { text: "", is_correct: false },
-      { text: "", is_correct: false },
-      { text: "", is_correct: false },
-      { text: "", is_correct: false }
-    ]
+      { text: "", is_correct: false, image_url: "" },
+      { text: "", is_correct: false, image_url: "" },
+      { text: "", is_correct: false, image_url: "" },
+      { text: "", is_correct: false, image_url: "" },
+    ],
   });
 
   useEffect(() => {
@@ -313,8 +329,6 @@ function CourseManager({ course, onBack, onSelectChapter }) {
   };
 
   const selectChapter = (chapter) => {
-    console.log("Selected chapter:", chapter);
-    console.log("Chapter published status:", chapter.published);
     setSelectedChapter(chapter);
     setChapterForm({
       title: chapter.title || "",
@@ -322,7 +336,8 @@ function CourseManager({ course, onBack, onSelectChapter }) {
       video_url: chapter.video_url || "",
       position: chapter.position || 1,
     });
-    setEditing(false);
+    setEditingChapter(false);
+    setHasChapterUnsavedChanges(false);
   };
 
   const startNewChapter = () => {
@@ -333,14 +348,36 @@ function CourseManager({ course, onBack, onSelectChapter }) {
       video_url: "",
       position: chapters.length + 1,
     });
-    setEditing(true);
+    setEditingChapter(true);
+    setHasChapterUnsavedChanges(false);
   };
 
   const startEditChapter = () => {
-    setEditing(true);
+    if (!selectedChapter) return;
+    setEditingChapter(true);
   };
 
   const saveChapter = async () => {
+    // Prevent unnecessary save if nothing changed for existing chapter
+    if (selectedChapter && !hasChapterUnsavedChanges) {
+      return; // silently ignore; button will be disabled anyway
+    }
+    // Validate fields first; allow empty fields to show errors instead of silently disabling button
+    const errors = {};
+    if (!chapterForm.title.trim()) errors.title = "Title is required";
+    if (!chapterForm.description.trim()) errors.description = "Description is required";
+    const posNum = parseInt(chapterForm.position, 10);
+    if (isNaN(posNum) || posNum <= 0) errors.position = "Position must be a positive number";
+      // Require YouTube link (previously optional) and validate basic format
+      if (!chapterForm.video_url || !chapterForm.video_url.trim()) {
+        errors.video_url = "YouTube link is required";
+      } else if (!/^https?:\/\//i.test(chapterForm.video_url.trim())) {
+        errors.video_url = "Must be a valid URL (starts with http/https)";
+      }
+    setChapterErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      return; // Do not proceed if validation fails
+    }
     try {
       const chapterData = {
         ...chapterForm,
@@ -349,11 +386,15 @@ function CourseManager({ course, onBack, onSelectChapter }) {
 
       let response;
       if (selectedChapter) {
-        // Update existing chapter
+        // If original is published, create/update draft instead of overwriting
+        const isPublishedOriginal = selectedChapter.published && !selectedChapter.draft_of;
         response = await fetch(`/api/admin/chapters/${selectedChapter.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(chapterData),
+          body: JSON.stringify({
+            ...chapterData,
+            draft: isPublishedOriginal, // tell API to create/update draft
+          }),
         });
       } else {
         // Create new chapter
@@ -366,9 +407,13 @@ function CourseManager({ course, onBack, onSelectChapter }) {
 
       if (response.ok) {
         const savedChapter = await response.json();
-        await loadChapters();
+        await loadChapters(); // load will collapse originals/drafts
+        // If this was a draft edit, savedChapter may be draft (draft_of present)
         setSelectedChapter(savedChapter);
-        setEditing(false);
+        setSelectedChapter(savedChapter); // Update selected chapter
+        setEditingChapter(false);
+        setHasChapterUnsavedChanges(false);
+        setChapterErrors({});
       } else {
         const error = await response.json();
         alert(error.error || "Failed to save chapter");
@@ -415,23 +460,23 @@ function CourseManager({ course, onBack, onSelectChapter }) {
   };
 
   const publishChapter = async (chapter) => {
-    console.log("Publishing chapter:", chapter.id, chapter.title);
     try {
       const url = `/api/admin/chapters/${chapter.id}/publish`;
-      console.log("Publish URL:", url);
-      
+
       const response = await fetch(url, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ published: true }),
       });
 
-      console.log("Publish response status:", response.status);
-
       if (response.ok) {
         const result = await response.json();
-        console.log("Publish result:", result);
+        // Reload chapters to collapse drafts and get promoted original
         await loadChapters();
+        // If a draft was promoted, result will be original row; select it
+        if (result && result.id) {
+          setSelectedChapter(result); // Update selected chapter
+        }
         alert("Chapter published successfully!");
       } else {
         const errorText = await response.text();
@@ -451,11 +496,14 @@ function CourseManager({ course, onBack, onSelectChapter }) {
 
   const unpublishChapter = async (chapter) => {
     try {
-      const response = await fetch(`/api/admin/chapters/${chapter.id}/publish`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ published: false }),
-      });
+      const response = await fetch(
+        `/api/admin/chapters/${chapter.id}/publish`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ published: false }),
+        }
+      );
 
       if (response.ok) {
         await loadChapters();
@@ -470,6 +518,82 @@ function CourseManager({ course, onBack, onSelectChapter }) {
     }
   };
 
+  // Single draft discard helper (was missing -> caused onClick reference error)
+  const discardChapterDraft = async (draftChapter) => {
+    if (!draftChapter?.draft_of) return;
+    if (!confirm("Discard this draft and keep the currently published chapter?")) return;
+    try {
+      const res = await fetch(`/api/admin/chapters/${draftChapter.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const err = await res.json().catch(()=>({}));
+        alert(err.error || 'Failed to discard draft');
+        return;
+      }
+      await loadChapters();
+      // Re-select original if present
+      const original = chapters.find(c => c.id === draftChapter.draft_of);
+      if (original) selectChapter(original);
+    } catch (e) {
+      console.error('Discard draft error', e);
+      alert('Failed to discard draft');
+    }
+  };
+
+  // Bulk chapter draft actions (re-added after refactor)
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const bulkPublishChapterDrafts = async () => {
+    if (bulkBusy) return;
+    const draftCount = chapters.filter(c => c.draft_of).length;
+    if (draftCount === 0) return;
+    if (!confirm(`Publish ${draftCount} chapter draft change${draftCount === 1 ? '' : 's'}?`)) return;
+    setBulkBusy(true);
+    try {
+      const resp = await fetch(`/api/admin/chapters/publish?course_id=${course.id}`, { method: 'PATCH' });
+      if (!resp.ok) {
+        const err = await resp.json().catch(()=>({}));
+        alert(err.error || 'Bulk publish failed');
+      } else {
+        await loadChapters();
+        // If a draft was selected, select its original now
+        if (selectedChapter?.draft_of) {
+          const original = chapters.find(c => c.id === selectedChapter.draft_of);
+            if (original) selectChapter(original);
+        }
+      }
+    } catch (e) {
+      console.error('Bulk publish error', e);
+      alert('Failed to publish drafts');
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const bulkDiscardChapterDrafts = async () => {
+    if (bulkBusy) return;
+    const draftCount = chapters.filter(c => c.draft_of).length;
+    if (draftCount === 0) return;
+    if (!confirm(`Discard ALL ${draftCount} chapter draft change${draftCount === 1 ? '' : 's'}? This cannot be undone.`)) return;
+    setBulkBusy(true);
+    try {
+      const resp = await fetch(`/api/admin/chapters/drafts?course_id=${course.id}`, { method: 'DELETE' });
+      if (!resp.ok) {
+        const err = await resp.json().catch(()=>({}));
+        alert(err.error || 'Bulk discard failed');
+      } else {
+        await loadChapters();
+        if (selectedChapter?.draft_of) {
+          const original = chapters.find(c => c.id === selectedChapter.draft_of);
+          if (original) selectChapter(original); else setSelectedChapter(null);
+        }
+      }
+    } catch (e) {
+      console.error('Bulk discard error', e);
+      alert('Failed to discard drafts');
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   const cancelEdit = () => {
     if (selectedChapter) {
       selectChapter(selectedChapter);
@@ -478,21 +602,82 @@ function CourseManager({ course, onBack, onSelectChapter }) {
         selectChapter(chapters[0]);
       }
     }
-    setEditing(false);
+    setEditingChapter(false);
+    setHasChapterUnsavedChanges(false);
   };
+
+  // Track unsaved changes relative to selected chapter
+  useEffect(() => {
+    if (!selectedChapter) {
+      setHasChapterUnsavedChanges(false);
+      return;
+    }
+    const dirty =
+      (chapterForm.title || "") !== (selectedChapter.title || "") ||
+      (chapterForm.description || "") !== (selectedChapter.description || "") ||
+      (chapterForm.video_url || "") !== (selectedChapter.video_url || "") ||
+      (chapterForm.position || 1) !== (selectedChapter.position || 1);
+    setHasChapterUnsavedChanges(dirty);
+  }, [chapterForm, selectedChapter]);
 
   // Practice Questions Functions
   const loadPracticeQuestions = async () => {
     if (!selectedChapter?.id) return;
-    
+
     setQuestionsLoading(true);
     try {
-      const response = await fetch(`/api/admin/questions?chapter_id=${selectedChapter.id}&is_practice=true`);
+      const response = await fetch(
+        `/api/admin/questions?chapter_id=${selectedChapter.id}&is_practice=true`
+      );
       if (response.ok) {
         const data = await response.json();
-        setPracticeQuestions(data);
-        if (data.length > 0 && !selectedQuestion) {
-          selectQuestion(data[0]);
+
+        // Collapse originals when a draft exists: keep only draft version.
+        // Build map: originalId -> draft
+        const draftsByOriginal = new Map();
+        for (const q of data) {
+          if (q.draft_of) {
+            draftsByOriginal.set(q.draft_of, q);
+          }
+        }
+
+        const collapsed = [];
+        for (const q of data) {
+          if (q.draft_of) {
+            // It's already a draft; will be added when iterated here
+            collapsed.push(q);
+          } else {
+            // Original: only include if no draft present
+            if (!draftsByOriginal.has(q.id)) {
+              collapsed.push(q);
+            }
+          }
+        }
+
+        // Preserve ordering: sort by position (existing logic downstream also sorts but keep list sensible)
+        collapsed.sort((a, b) => (a.position || 0) - (b.position || 0));
+
+        setPracticeQuestions(collapsed);
+        if (collapsed.length > 0) {
+          // If currently selected question got replaced by its draft, select that draft
+            if (selectedQuestion) {
+              if (selectedQuestion.draft_of) {
+                // Selected is already a draft; keep
+                selectQuestion(collapsed.find(q => q.id === selectedQuestion.id) || collapsed[0]);
+              } else {
+                // Selected was an original; check if a draft now exists
+                const draft = collapsed.find(q => q.draft_of === selectedQuestion.id);
+                if (draft) {
+                  selectQuestion(draft);
+                } else {
+                  // Still original present
+                  const originalStill = collapsed.find(q => q.id === selectedQuestion.id);
+                  selectQuestion(originalStill || collapsed[0]);
+                }
+              }
+            } else {
+              selectQuestion(collapsed[0]);
+            }
         }
       } else {
         console.error("Failed to load practice questions");
@@ -505,8 +690,8 @@ function CourseManager({ course, onBack, onSelectChapter }) {
   };
 
   const selectQuestion = (question) => {
-    console.log("Selected question:", question);
     setSelectedQuestion(question);
+    // Only load form data in view mode - don't allow editing until Edit button is clicked
     setQuestionForm({
       text: question.text || "",
       type: question.type || "multiple_choice",
@@ -518,10 +703,21 @@ function CourseManager({ course, onBack, onSelectChapter }) {
         { text: "", is_correct: false },
         { text: "", is_correct: false },
         { text: "", is_correct: false },
-        { text: "", is_correct: false }
-      ]
+        { text: "", is_correct: false },
+      ],
     });
-    setEditingQuestion(false);
+    setEditingQuestion(false); // Start in view mode
+    setHasUnsavedChanges(false); // Clear unsaved changes when switching questions
+  };
+
+  const startEditingQuestion = (question) => {
+    // First select the question if not already selected
+    if (selectedQuestion?.id !== question.id) {
+      selectQuestion(question);
+    }
+    // Then enter edit mode
+    setEditingQuestion(true);
+    setHasUnsavedChanges(false); // No changes yet when starting to edit
   };
 
   const startNewQuestion = () => {
@@ -536,8 +732,8 @@ function CourseManager({ course, onBack, onSelectChapter }) {
         { text: "", is_correct: false },
         { text: "", is_correct: false },
         { text: "", is_correct: false },
-        { text: "", is_correct: false }
-      ]
+        { text: "", is_correct: false },
+      ],
     });
     setEditingQuestion(true);
   };
@@ -548,30 +744,88 @@ function CourseManager({ course, onBack, onSelectChapter }) {
 
   const saveQuestion = async () => {
     // Check if at least one answer is marked as correct
-    const hasCorrectAnswer = questionForm.choices.some(choice => choice.is_correct);
+    const hasCorrectAnswer = questionForm.choices.some(
+      (choice) => choice.is_correct
+    );
     if (!hasCorrectAnswer) {
-      setValidationMessage("Please select at least one correct answer before saving.");
+      setValidationMessage(
+        "Please select at least one correct answer before saving."
+      );
       setTimeout(() => setValidationMessage(""), 4000);
       return;
     }
 
     try {
-      const questionData = {
-        ...questionForm,
-        chapter_id: selectedChapter.id,
-        is_practice: true
-      };
-
       let response;
-      if (selectedQuestion) {
-        // Update existing question
+
+      if (selectedQuestion && !selectedQuestion.draft_of) {
+        // Editing an original published question - create a draft copy
+        const draftData = {
+          ...questionForm,
+          chapter_id: selectedChapter.id,
+          is_practice: true,
+          published: false, // Drafts are unpublished
+          draft_of: selectedQuestion.id, // Link to original
+        };
+
+        // Check if a draft already exists for this question
+        const existingDraftResponse = await fetch(
+          `/api/admin/questions?draft_of=${selectedQuestion.id}`
+        );
+
+        if (existingDraftResponse.ok) {
+          const existingDrafts = await existingDraftResponse.json();
+          if (existingDrafts.length > 0) {
+            // Update existing draft
+            response = await fetch(
+              `/api/admin/questions/${existingDrafts[0].id}`,
+              {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(draftData),
+              }
+            );
+          } else {
+            // Create new draft
+            response = await fetch("/api/admin/questions", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(draftData),
+            });
+          }
+        } else {
+          // Create new draft (fallback)
+          response = await fetch("/api/admin/questions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(draftData),
+          });
+        }
+      } else if (selectedQuestion && selectedQuestion.draft_of) {
+        // Editing an existing draft - update the draft
+        const draftData = {
+          ...questionForm,
+          chapter_id: selectedChapter.id,
+          is_practice: true,
+          published: false, // Keep as draft
+          draft_of: selectedQuestion.draft_of, // Maintain link to original
+        };
+
         response = await fetch(`/api/admin/questions/${selectedQuestion.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(questionData),
+          body: JSON.stringify(draftData),
         });
       } else {
-        // Create new question
+        // Creating a new question - save as published
+        const questionData = {
+          ...questionForm,
+          chapter_id: selectedChapter.id,
+          is_practice: true,
+          published: true, // New questions are published
+          draft_of: null, // Not a draft
+        };
+
         response = await fetch("/api/admin/questions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -584,7 +838,12 @@ function CourseManager({ course, onBack, onSelectChapter }) {
         await loadPracticeQuestions();
         setSelectedQuestion(savedQuestion);
         setEditingQuestion(false);
-        setSuccessMessage("Question saved successfully!");
+        setHasUnsavedChanges(false);
+        const statusMessage =
+          selectedQuestion && !selectedQuestion.published
+            ? "Question saved as draft!"
+            : "Question saved successfully!";
+        setSuccessMessage(statusMessage);
         setTimeout(() => setSuccessMessage(""), 3000);
       } else {
         const error = await response.json();
@@ -600,19 +859,28 @@ function CourseManager({ course, onBack, onSelectChapter }) {
 
   const toggleQuestionPublish = async (question) => {
     try {
-      const response = await fetch(`/api/admin/questions/${question.id}/publish`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ published: !question.published }),
-      });
+      const response = await fetch(
+        `/api/admin/questions/${question.id}/publish`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ published: !question.published }),
+        }
+      );
 
       if (response.ok) {
-        setSuccessMessage(`Question ${!question.published ? 'published' : 'unpublished'} successfully!`);
+        setSuccessMessage(
+          `Question ${
+            !question.published ? "published" : "unpublished"
+          } successfully!`
+        );
         setTimeout(() => setSuccessMessage(""), 3000);
         await loadPracticeQuestions();
       } else {
         const error = await response.json();
-        setSuccessMessage(`Error: ${error.error || "Failed to update question"}`);
+        setSuccessMessage(
+          `Error: ${error.error || "Failed to update question"}`
+        );
         setTimeout(() => setSuccessMessage(""), 5000);
       }
     } catch (error) {
@@ -623,8 +891,8 @@ function CourseManager({ course, onBack, onSelectChapter }) {
   };
 
   const publishAllDrafts = async () => {
-    const draftQuestions = practiceQuestions.filter(q => !q.published);
-    
+    const draftQuestions = practiceQuestions.filter((q) => q.draft_of);
+
     if (draftQuestions.length === 0) {
       setValidationMessage("No draft questions to publish.");
       setTimeout(() => setValidationMessage(""), 3000);
@@ -632,7 +900,7 @@ function CourseManager({ course, onBack, onSelectChapter }) {
     }
 
     try {
-      const publishPromises = draftQuestions.map(question => 
+      const publishPromises = draftQuestions.map((question) =>
         fetch(`/api/admin/questions/${question.id}/publish`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -641,15 +909,19 @@ function CourseManager({ course, onBack, onSelectChapter }) {
       );
 
       const results = await Promise.all(publishPromises);
-      const successful = results.filter(r => r.ok).length;
+      const successful = results.filter((r) => r.ok).length;
       const failed = results.length - successful;
 
       if (failed === 0) {
-        setSuccessMessage(`Successfully published all ${successful} draft questions!`);
+        setSuccessMessage(
+          `Successfully published all ${successful} draft questions!`
+        );
       } else {
-        setSuccessMessage(`Published ${successful} questions, ${failed} failed.`);
+        setSuccessMessage(
+          `Published ${successful} questions, ${failed} failed.`
+        );
       }
-      
+
       setTimeout(() => setSuccessMessage(""), 4000);
       await loadPracticeQuestions();
     } catch (error) {
@@ -664,15 +936,15 @@ function CourseManager({ course, onBack, onSelectChapter }) {
       ...question,
       text: `${question.text} (Copy)`,
       position: practiceQuestions.length + 1,
-      choices: question.choices?.map(choice => ({ ...choice })) || [
+      choices: question.choices?.map((choice) => ({ ...choice })) || [
         { text: "", is_correct: false },
         { text: "", is_correct: false },
         { text: "", is_correct: false },
-        { text: "", is_correct: false }
-      ]
+        { text: "", is_correct: false },
+      ],
     };
     delete duplicatedQuestion.id; // Remove ID so it creates a new question
-    
+
     try {
       const response = await fetch("/api/admin/questions", {
         method: "POST",
@@ -680,7 +952,7 @@ function CourseManager({ course, onBack, onSelectChapter }) {
         body: JSON.stringify({
           ...duplicatedQuestion,
           chapter_id: selectedChapter.id,
-          is_practice: true
+          is_practice: true,
         }),
       });
 
@@ -690,7 +962,9 @@ function CourseManager({ course, onBack, onSelectChapter }) {
         await loadPracticeQuestions();
       } else {
         const error = await response.json();
-        setSuccessMessage(`Error: ${error.error || "Failed to duplicate question"}`);
+        setSuccessMessage(
+          `Error: ${error.error || "Failed to duplicate question"}`
+        );
         setTimeout(() => setSuccessMessage(""), 5000);
       }
     } catch (error) {
@@ -713,7 +987,9 @@ function CourseManager({ course, onBack, onSelectChapter }) {
       if (response.ok) {
         await loadPracticeQuestions();
         if (selectedQuestion?.id === question.id) {
-          const remainingQuestions = practiceQuestions.filter((q) => q.id !== question.id);
+          const remainingQuestions = practiceQuestions.filter(
+            (q) => q.id !== question.id
+          );
           if (remainingQuestions.length > 0) {
             selectQuestion(remainingQuestions[0]);
           } else {
@@ -725,7 +1001,9 @@ function CourseManager({ course, onBack, onSelectChapter }) {
         setTimeout(() => setSuccessMessage(""), 3000);
       } else {
         const error = await response.json();
-        setSuccessMessage(`Error: ${error.error || "Failed to delete question"}`);
+        setSuccessMessage(
+          `Error: ${error.error || "Failed to delete question"}`
+        );
         setTimeout(() => setSuccessMessage(""), 5000);
       }
     } catch (error) {
@@ -744,6 +1022,54 @@ function CourseManager({ course, onBack, onSelectChapter }) {
       }
     }
     setEditingQuestion(false);
+    setHasUnsavedChanges(false);
+  };
+
+  const discardAllDrafts = async () => {
+    const draftQuestions = practiceQuestions.filter((q) => q.draft_of); // Only drafts
+
+    if (draftQuestions.length === 0) return;
+
+    if (
+      !confirm(
+        `Are you sure you want to discard ALL draft changes? This will delete ${draftQuestions.length} draft(s) and revert to the original published questions.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      // Call new bulk endpoint (prefer quiz_id resolution if we have one from any question)
+      const firstDraft = draftQuestions[0];
+      const quizId = firstDraft.quiz_id;
+      const response = await fetch(
+        `/api/admin/questions/drafts?quiz_id=${quizId}`,
+        { method: "DELETE" }
+      );
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || "Bulk discard failed");
+      }
+
+      const result = await response.json();
+
+      // Reload the questions to show updated state
+      await loadPracticeQuestions();
+      setSelectedQuestion(null);
+      setEditingQuestion(false);
+      setHasUnsavedChanges(false);
+
+      setSuccessMessage(
+        `Discarded ${result.deleted || 0} draft question(s). Originals preserved.`
+      );
+      setTimeout(() => setSuccessMessage(""), 3000);
+    } catch (error) {
+      console.error("Error discarding drafts:", error);
+      alert(
+        "Failed to discard drafts. Please refresh the page and try again."
+      );
+    }
   };
 
   // Load practice questions when chapter or practice tab is selected
@@ -755,97 +1081,130 @@ function CourseManager({ course, onBack, onSelectChapter }) {
 
   return (
     <div className={styles.courseManager}>
-      {/* Course Header with Back Button */}
-      <div className={styles.courseHeader}>
-        <button className={styles.backBtn} onClick={onBack}>
-          {activeTab === "practice" && selectedChapter 
-            ? `← Back to Chapter ${selectedChapter.position}` 
-            : "← Back to Courses"}
-        </button>
-        <h2>{course.title} — Course Manager</h2>
-      </div>
-
-      <div className={`${styles.courseLayout} ${activeTab === "practice" ? styles.practiceMode : ""}`}>
+      <div
+        className={`${styles.courseLayout} ${
+          activeTab === "practice" ? styles.practiceMode : ""
+        }`}
+      >
         {/* Chapters Sidebar - Hidden in Practice Tab */}
         {activeTab !== "practice" && (
-        <div className={styles.chaptersSidebar}>
-          <div className={styles.chaptersHeader}>
-            <h3>Chapters</h3>
-            <button className={styles.addChapterBtn} onClick={startNewChapter}>
-              + Add Chapter
-            </button>
-          </div>
+          <div className={styles.chaptersSidebar}>
+            <div className={styles.chaptersHeader}>
+              <h3>Chapters</h3>
+              <button
+                className={styles.addChapterBtn}
+                onClick={startNewChapter}
+              >
+                + Add Chapter
+              </button>
+            </div>
 
-          <div className={styles.chaptersList}>
-            {loading ? (
-              <div
-                style={{
-                  padding: "20px",
-                  textAlign: "center",
-                  color: "#8b949e",
-                }}
-              >
-                Loading chapters...
-              </div>
-            ) : chapters.length === 0 ? (
-              <div
-                style={{
-                  padding: "20px",
-                  textAlign: "center",
-                  color: "#8b949e",
-                }}
-              >
-                No chapters yet. Click "+ Add Chapter" to get started.
-              </div>
-            ) : (
-              chapters.map((chapter) => (
+            <div className={styles.chaptersList}>
+              {loading ? (
                 <div
-                  key={chapter.id}
-                  className={`${styles.chapterItem} ${
-                    selectedChapter?.id === chapter.id ? styles.active : ""
-                  }`}
-                  onClick={() => selectChapter(chapter)}
+                  style={{
+                    padding: "20px",
+                    textAlign: "center",
+                    color: "#8b949e",
+                  }}
                 >
-                  <div className={styles.chapterInfo}>
-                    <div className={styles.chapterTitle}>
-                      {chapter.position}. {chapter.title}
-                      {!chapter.published && (
-                        <span className={styles.draftBadge}>DRAFT</span>
-                      )}
-                    </div>
-                    <div className={styles.chapterMeta}>
-                      {chapter.video_url ? "Video" : "No video"} • Practice •
-                      Quiz
-                      {!chapter.published && " • Unpublished"}
-                    </div>
-                  </div>
-                  <div className={styles.chapterActions}>
-                    <button className={styles.dragHandle}>⋮⋮</button>
-                    <button
-                      className={styles.editBtn}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        selectChapter(chapter);
-                        startEditChapter();
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className={styles.moreBtn}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteChapter(chapter);
-                      }}
-                    >
-                      ×
-                    </button>
-                  </div>
+                  Loading chapters...
                 </div>
-              ))
-            )}
+              ) : chapters.length === 0 ? (
+                <div
+                  style={{
+                    padding: "20px",
+                    textAlign: "center",
+                    color: "#8b949e",
+                  }}
+                >
+                  No chapters yet. Click "+ Add Chapter" to get started.
+                </div>
+              ) : (
+                (() => {
+                  const draftCount = chapters.filter(c => c.draft_of).length;
+                  return (
+                    <>
+                      {draftCount > 0 && (
+                        <div className={styles.chapterBulkActions}>
+                          <button
+                            className={styles.bulkPublishBtn}
+                            disabled={bulkBusy}
+                            onClick={(e) => { e.stopPropagation(); bulkPublishChapterDrafts(); }}
+                            title={bulkBusy ? 'Working...' : 'Publish all chapter draft changes'}
+                          >{bulkBusy ? 'Publishing…' : `Publish Draft Changes (${draftCount})`}</button>
+                          <button
+                            className={styles.bulkDiscardBtn}
+                            disabled={bulkBusy}
+                            onClick={(e) => { e.stopPropagation(); bulkDiscardChapterDrafts(); }}
+                            title={bulkBusy ? 'Working...' : 'Discard all chapter draft changes'}
+                          >{bulkBusy ? 'Discarding…' : `Discard Draft Changes (${draftCount})`}</button>
+                        </div>
+                      )}
+                      {chapters.map(chapter => {
+                        const isDraft = !!chapter.draft_of;
+                        const isUnpublishedOriginal = !chapter.published && !isDraft;
+                        return (
+                          <div
+                            key={chapter.id}
+                            className={`${styles.chapterItem} ${selectedChapter?.id === chapter.id ? styles.active : ''}`}
+                            onClick={() => selectChapter(chapter)}
+                          >
+                            <div className={styles.chapterTop}>
+                              <div className={styles.chapterTitleLine}>
+                                <span className={styles.chapterLabel}>Chapter {chapter.position}:</span>
+                                <span className={styles.chapterTitleText}>{chapter.title}</span>
+                              </div>
+                              <div className={styles.chapterButtons}>
+                                <button
+                                  className={styles.editTinyBtn}
+                                  onClick={(e) => { e.stopPropagation(); selectChapter(chapter); startEditChapter(); }}
+                                >Edit</button>
+                                {isDraft && (
+                                  <>
+                                    <button
+                                      className={styles.publishTinyBtn}
+                                      onClick={(e) => { e.stopPropagation(); publishChapter(chapter); }}
+                                    >Publish</button>
+                                    <button
+                                      className={styles.discardTinyBtn}
+                                      onClick={(e) => { e.stopPropagation(); discardChapterDraft(chapter); }}
+                                    >Discard</button>
+                                  </>
+                                )}
+                                {isUnpublishedOriginal && (
+                                  <button
+                                    className={styles.publishTinyBtn}
+                                    onClick={(e) => { e.stopPropagation(); publishChapter(chapter); }}
+                                  >Publish</button>
+                                )}
+                                <button
+                                  className={styles.deleteTinyBtn}
+                                  title="Delete chapter"
+                                  onClick={(e) => { e.stopPropagation(); deleteChapter(chapter); }}
+                                >×</button>
+                              </div>
+                            </div>
+                            <div className={styles.chapterMetaLine}>
+                              <span>{chapter.video_url ? 'Video' : 'No video'}</span>
+                              <span>• Practice</span>
+                              <span>• Quiz</span>
+                            </div>
+                            {(isDraft || isUnpublishedOriginal) && (
+                              <div className={styles.chapterStatusLine}>
+                                {isDraft && <span className={styles.statusDraft}>Draft changes pending publish</span>}
+                                {isUnpublishedOriginal && <span className={styles.statusUnpublished}>Unpublished chapter</span>}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </>
+                  );
+                })()
+              )}
+            </div>
           </div>
-        </div>
         )}
 
         {/* Main Content */}
@@ -886,23 +1245,28 @@ function CourseManager({ course, onBack, onSelectChapter }) {
           </div>
 
           {activeTab === "details" && (
-            <div className={styles.detailsForm}>
+            <div className={`${styles.detailsForm} ${editingChapter ? styles.editMode : styles.viewMode}`}>
               <div className={styles.formGroup}>
                 <label>Chapter title</label>
                 <input
                   type="text"
                   value={chapterForm.title}
+                  disabled={!editingChapter}
                   onChange={(e) =>
                     setChapterForm({ ...chapterForm, title: e.target.value })
                   }
                   placeholder="e.g., Structure & Bonding"
                 />
+                {chapterErrors.title && (
+                  <div className={styles.fieldError}>{chapterErrors.title}</div>
+                )}
               </div>
 
               <div className={styles.formGroup}>
                 <label>Short description</label>
                 <textarea
                   value={chapterForm.description}
+                  disabled={!editingChapter}
                   onChange={(e) =>
                     setChapterForm({
                       ...chapterForm,
@@ -911,6 +1275,9 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                   }
                   placeholder="One or two lines to describe the chapter."
                 />
+                {chapterErrors.description && (
+                  <div className={styles.fieldError}>{chapterErrors.description}</div>
+                )}
               </div>
 
               <div className={styles.formGroup}>
@@ -918,6 +1285,7 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                 <input
                   type="text"
                   value={chapterForm.video_url}
+                  disabled={!editingChapter}
                   onChange={(e) =>
                     setChapterForm({
                       ...chapterForm,
@@ -926,6 +1294,9 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                   }
                   placeholder="https://youtube.com/watch?v=..."
                 />
+                {chapterErrors.video_url && (
+                  <div className={styles.fieldError}>{chapterErrors.video_url}</div>
+                )}
               </div>
 
               <div className={styles.formRow}>
@@ -934,6 +1305,7 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                   <input
                     type="number"
                     value={chapterForm.position}
+                    disabled={!editingChapter}
                     onChange={(e) =>
                       setChapterForm({
                         ...chapterForm,
@@ -941,23 +1313,42 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                       })
                     }
                   />
+                  {chapterErrors.position && (
+                    <div className={styles.fieldError}>{chapterErrors.position}</div>
+                  )}
                 </div>
               </div>
-
-              <div className={styles.actionButtons}>
-                <button
-                  className={styles.createPracticeBtn}
-                  onClick={() => onSelectChapter(chapters[0], "practice")}
-                >
-                  Create Practice set
-                </button>
-                <button
-                  className={styles.createQuizBtn}
-                  onClick={() => onSelectChapter(chapters[0], "quiz")}
-                >
-                  Create Quiz
-                </button>
-              </div>
+              {!editingChapter && selectedChapter && (
+                <div className={styles.inlineEditBar}>
+                  <button
+                    className={styles.editBtn}
+                    onClick={startEditChapter}
+                  >
+                    Edit Chapter
+                  </button>
+                </div>
+              )}
+              {editingChapter && (
+                <div className={styles.inlineEditBar}>
+                  <button
+                    className={styles.cancelBtn}
+                    onClick={cancelEdit}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className={styles.saveBtn}
+                    onClick={saveChapter}
+                    disabled={!editingChapter || (selectedChapter && !hasChapterUnsavedChanges)}
+                    title={selectedChapter && !hasChapterUnsavedChanges ? "No changes to save" : ""}
+                  >
+                    Save Changes
+                  </button>
+                  {hasChapterUnsavedChanges && (
+                    <span className={styles.modifiedTag}>UNSAVED</span>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -965,117 +1356,240 @@ function CourseManager({ course, onBack, onSelectChapter }) {
             <div className={styles.practiceContent}>
               {/* Success Message */}
               {successMessage && (
-                <div className={styles.successMessage}>
-                  {successMessage}
-                </div>
+                <div className={styles.successMessage}>{successMessage}</div>
               )}
-              
-              {/* Validation Message */}
-              {validationMessage && (
-                <div className={styles.validationMessage}>
-                  {validationMessage}
-                </div>
-              )}
+
               {/* Questions Sidebar */}
               <div className={styles.questionsSidebar}>
                 <div className={styles.questionsHeader}>
-                  <h3>Practice Questions</h3>
+                  <h3>Practice Quiz</h3>
                   <div className={styles.questionHeaderActions}>
-                    {practiceQuestions.filter(q => !q.published).length > 1 && (
-                      <button 
-                        className={styles.publishAllBtn} 
+                    {practiceQuestions.filter((q) => q.draft_of).length >
+                      1 && (
+                      <button
+                        className={styles.publishAllBtn}
                         onClick={publishAllDrafts}
-                        title={`Publish ${practiceQuestions.filter(q => !q.published).length} draft questions`}
+                        title={`Publish ${
+                          practiceQuestions.filter((q) => q.draft_of).length
+                        } draft questions`}
                       >
-                        Publish All Drafts ({practiceQuestions.filter(q => !q.published).length})
+                        Publish All Drafts (
+                        {practiceQuestions.filter((q) => q.draft_of).length})
                       </button>
                     )}
-                    <button className={styles.addQuestionBtn} onClick={startNewQuestion}>
+
+                    <button
+                      className={styles.addQuestionBtn}
+                      onClick={startNewQuestion}
+                    >
                       + Add Question
                     </button>
                   </div>
                 </div>
 
+                {/* Draft Changes Controls */}
+                {practiceQuestions.filter((q) => q.draft_of).length > 0 && (
+                  <div className={styles.sessionActionsContainer}>
+                    <button
+                      className={styles.discardAllBtn}
+                      onClick={discardAllDrafts}
+                    >
+                      �️ Discard All Draft Changes (
+                      {practiceQuestions.filter((q) => q.draft_of).length})
+                    </button>
+                  </div>
+                )}
+
                 <div className={styles.questionsList}>
                   {questionsLoading ? (
-                    <div style={{ padding: "20px", textAlign: "center", color: "#8b949e" }}>
+                    <div
+                      style={{
+                        padding: "20px",
+                        textAlign: "center",
+                        color: "#8b949e",
+                      }}
+                    >
                       Loading questions...
                     </div>
                   ) : practiceQuestions.length === 0 ? (
-                    <div style={{ padding: "20px", textAlign: "center", color: "#8b949e" }}>
-                      No practice questions yet. Click "+ Add Question" to get started.
+                    <div
+                      style={{
+                        padding: "20px",
+                        textAlign: "center",
+                        color: "#8b949e",
+                      }}
+                    >
+                      No practice quiz questions yet. Click "+ Add Question" to
+                      get started.
                     </div>
                   ) : (
-                    practiceQuestions.map((question, index) => (
-                      <div
-                        key={question.id}
-                        className={`${styles.questionItem} ${
-                          selectedQuestion?.id === question.id ? styles.active : ""
-                        }`}
-                        onClick={() => selectQuestion(question)}
-                      >
-                        <div className={styles.questionContent}>
-                          <div className={styles.questionHeader}>
-                            <span className={styles.questionNumber}>Q{index + 1}</span>
-                            <span className={styles.questionType}>{question.type?.toUpperCase()}</span>
-                            <span className={styles.questionPoints}>• {question.points} pts</span>
-                            {!question.published && (
-                              <span className={styles.draftTag}>DRAFT</span>
-                            )}
+                    [...practiceQuestions]
+                      .sort((a, b) => (a.position || 0) - (b.position || 0))
+                      .map((question, index) => (
+                        <div
+                          key={question.id}
+                          className={`${styles.questionItem} ${
+                            selectedQuestion?.id === question.id
+                              ? styles.active
+                              : ""
+                          }`}
+                          onClick={() => selectQuestion(question)}
+                        >
+                          <div className={styles.questionContent}>
+                            <div className={styles.questionHeader}>
+                              <span className={styles.questionNumber}>
+                                Q{index + 1}
+                              </span>
+                              <span className={styles.questionType}>
+                                {question.type?.toUpperCase()}
+                              </span>
+                              <span className={styles.questionPoints}>
+                                • {question.points} pts
+                              </span>
+                              {question.draft_of && (
+                                <span className={styles.draftTag}>DRAFT</span>
+                              )}
+                              {(selectedQuestion?.id === question.id
+                                ? questionForm.image_url
+                                : question.image_url) && (
+                                <span
+                                  className={styles.imageTag}
+                                  title="Has image"
+                                >
+                                  IMG
+                                </span>
+                              )}
+                              {hasUnsavedChanges &&
+                                selectedQuestion?.id === question.id && (
+                                  <span
+                                    className={styles.modifiedTag}
+                                    title="Has unsaved changes"
+                                  >
+                                    UNSAVED
+                                  </span>
+                                )}
+                            </div>
+
+                            <div className={styles.questionText}>
+                              {question.text && question.text.length > 50
+                                ? `${question.text.substring(0, 50)}...`
+                                : question.text || "Prompt preview..."}
+                            </div>
+
+                            <div className={styles.pointsDisplay}>
+                              Points: {question.points}
+                            </div>
+
+                            <div className={styles.questionButtons}>
+                              <button
+                                className={styles.duplicateBtn}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  duplicateQuestion(question);
+                                }}
+                              >
+                                Duplicate
+                              </button>
+                              <button
+                                className={`${styles.editBtn} ${
+                                  editingQuestion &&
+                                  selectedQuestion?.id === question.id
+                                    ? styles.cancelBtn
+                                    : ""
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (
+                                    editingQuestion &&
+                                    selectedQuestion?.id === question.id
+                                  ) {
+                                    // Cancel editing mode
+                                    setEditingQuestion(false);
+                                    setHasUnsavedChanges(false);
+                                    if (selectedQuestion) {
+                                      selectQuestion(selectedQuestion); // Reset to original data
+                                    }
+                                  } else {
+                                    startEditingQuestion(question);
+                                  }
+                                }}
+                              >
+                                {editingQuestion &&
+                                selectedQuestion?.id === question.id
+                                  ? "Cancel"
+                                  : "Edit"}
+                              </button>
+                              <button
+                                className={`${styles.publishBtn} ${
+                                  question.published
+                                    ? styles.unpublish
+                                    : styles.publish
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleQuestionPublish(question);
+                                }}
+                              >
+                                {question.published ? "Unpublish" : "Publish"}
+                              </button>
+                              {/* <button className={styles.moveBtn}>Move ↑↓</button> */}
+                            </div>
                           </div>
-                          
-                          <div className={styles.questionText}>
-                            {question.text && question.text.length > 50 
-                              ? `${question.text.substring(0, 50)}...` 
-                              : question.text || "Prompt preview..."}
-                          </div>
-                          
-                          <div className={styles.pointsDisplay}>
-                            Points: {question.points}
-                          </div>
-                          
-                          <div className={styles.questionButtons}>
-                            <button 
-                              className={styles.duplicateBtn}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                duplicateQuestion(question);
-                              }}
-                            >
-                              Duplicate
-                            </button>
-                            <button 
-                              className={`${styles.publishBtn} ${question.published ? styles.unpublish : styles.publish}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleQuestionPublish(question);
-                              }}
-                            >
-                              {question.published ? 'Unpublish' : 'Publish'}
-                            </button>
-                            <button className={styles.moveBtn}>Move ↑↓</button>
+
+                          <div className={styles.questionMenu}>
+                            <button className={styles.moreBtn}>⋯</button>
                           </div>
                         </div>
-                        
-                        <div className={styles.questionMenu}>
-                          <button className={styles.moreBtn}>⋯</button>
-                        </div>
-                      </div>
-                    ))
+                      ))
                   )}
                 </div>
               </div>
 
               {/* Question Form */}
-              <div className={styles.questionForm}>
+              <div
+                className={`${styles.questionForm} ${
+                  editingQuestion ? styles.editing : ""
+                }`}
+              >
                 <div className={styles.formRow}>
                   <div className={styles.formGroup}>
                     <label>Type</label>
                     <select
                       value={questionForm.type}
-                      onChange={(e) => setQuestionForm({ ...questionForm, type: e.target.value })}
+                      disabled={!editingQuestion}
+                      onChange={(e) => {
+                        if (!editingQuestion) return;
+                        const newType = e.target.value;
+                        const newChoices =
+                          newType === "true_false"
+                            ? [
+                                {
+                                  text: "True",
+                                  is_correct: false,
+                                  image_url: "",
+                                },
+                                {
+                                  text: "False",
+                                  is_correct: false,
+                                  image_url: "",
+                                },
+                              ]
+                            : [
+                                { text: "", is_correct: false, image_url: "" },
+                                { text: "", is_correct: false, image_url: "" },
+                                { text: "", is_correct: false, image_url: "" },
+                                { text: "", is_correct: false, image_url: "" },
+                              ];
+                        setQuestionForm({
+                          ...questionForm,
+                          type: newType,
+                          choices: newChoices,
+                        });
+                        setHasUnsavedChanges(true);
+                      }}
                     >
                       <option value="multiple_choice">Multiple Choice</option>
+                      <option value="true_false">True/False</option>
                     </select>
                   </div>
                   <div className={styles.formGroup}>
@@ -1083,7 +1597,16 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                     <input
                       type="number"
                       value={questionForm.points}
-                      onChange={(e) => setQuestionForm({ ...questionForm, points: parseInt(e.target.value) })}
+                      readOnly={!editingQuestion}
+                      disabled={!editingQuestion}
+                      onChange={(e) => {
+                        if (!editingQuestion) return;
+                        setQuestionForm({
+                          ...questionForm,
+                          points: parseInt(e.target.value),
+                        });
+                        setHasUnsavedChanges(true);
+                      }}
                       min="1"
                       max="10"
                     />
@@ -1093,7 +1616,16 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                     <input
                       type="number"
                       value={questionForm.position}
-                      onChange={(e) => setQuestionForm({ ...questionForm, position: parseInt(e.target.value) })}
+                      readOnly={!editingQuestion}
+                      disabled={!editingQuestion}
+                      onChange={(e) => {
+                        if (!editingQuestion) return;
+                        setQuestionForm({
+                          ...questionForm,
+                          position: parseInt(e.target.value),
+                        });
+                        setHasUnsavedChanges(true);
+                      }}
                       min="1"
                     />
                   </div>
@@ -1103,135 +1635,242 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                   <label>Prompt</label>
                   <textarea
                     value={questionForm.text}
-                    onChange={(e) => setQuestionForm({ ...questionForm, text: e.target.value })}
-                    placeholder="Enter your question here..."
+                    readOnly={!editingQuestion}
+                    disabled={!editingQuestion}
+                    onChange={(e) => {
+                      if (!editingQuestion) return;
+                      setQuestionForm({
+                        ...questionForm,
+                        text: e.target.value,
+                      });
+                      setHasUnsavedChanges(true);
+                    }}
+                    placeholder={
+                      editingQuestion
+                        ? "Enter your question here..."
+                        : "Question text (read-only)"
+                    }
                     rows="3"
                   />
                 </div>
 
                 <div className={styles.formGroup}>
-                  <label>Image (optional)</label>
-                  <div className={styles.imageUpload}>
-                    <input
-                      type="text"
-                      value={questionForm.image_url}
-                      onChange={(e) => setQuestionForm({ ...questionForm, image_url: e.target.value })}
-                      placeholder="Image URL or upload an image"
-                    />
-                    <button className={styles.uploadBtn}>Upload</button>
-                  </div>
+                  <label>Question Image (optional)</label>
+                  <ImageUpload
+                    currentImageUrl={questionForm.image_url || ""}
+                    onImageChange={(url) => {
+                      if (!editingQuestion) return;
+                      setQuestionForm({ ...questionForm, image_url: url });
+                      setHasUnsavedChanges(true);
+                    }}
+                    folder="questions"
+                    prefix="practice_question"
+                    placeholder={
+                      editingQuestion
+                        ? "Drop image here or click to upload"
+                        : "Question image (view only)"
+                    }
+                    disabled={!editingQuestion}
+                  />
                 </div>
 
                 <div className={styles.formGroup}>
-                  <label>Answer choices</label>
+                  <label>
+                    {questionForm.type === "true_false"
+                      ? "Select correct answer"
+                      : "Answer choices"}
+                  </label>
+                  {/* Validation Message */}
+                  {validationMessage && (
+                    <div
+                      className={styles.validationMessage}
+                      style={{ marginTop: "8px", marginBottom: "12px" }}
+                    >
+                      {validationMessage}
+                    </div>
+                  )}
                   <div className={styles.choicesGrid}>
                     {questionForm.choices.map((choice, index) => (
-                      <div key={index} className={styles.choiceRow}>
-                        <div className={styles.choiceLabel}>
-                          {String.fromCharCode(65 + index)})
+                      <div key={index} className={styles.choiceItem}>
+                        <div className={styles.choiceHeader}>
+                          <span className={styles.choiceLabel}>
+                            {String.fromCharCode(65 + index)})
+                          </span>
+                          <button
+                            className={`${styles.correctBtn} ${
+                              choice.is_correct ? styles.correct : ""
+                            }`}
+                            onClick={() => {
+                              const newChoices = [...questionForm.choices];
+                              if (questionForm.type === "true_false") {
+                                // For True/False, only one answer can be correct
+                                newChoices.forEach((c, i) => {
+                                  c.is_correct = i === index;
+                                });
+                              } else {
+                                // For Multiple Choice, toggle this choice
+                                newChoices[index] = {
+                                  ...choice,
+                                  is_correct: !choice.is_correct,
+                                };
+                              }
+                              setQuestionForm({
+                                ...questionForm,
+                                choices: newChoices,
+                              });
+                              setHasUnsavedChanges(true);
+                            }}
+                          >
+                            {choice.is_correct ? "✓ Correct" : "Mark correct"}
+                          </button>
                         </div>
-                        <input
-                          type="text"
-                          value={choice.text}
-                          onChange={(e) => {
-                            const newChoices = [...questionForm.choices];
-                            newChoices[index] = { ...choice, text: e.target.value };
-                            setQuestionForm({ ...questionForm, choices: newChoices });
-                          }}
-                          placeholder="Choice text"
-                        />
-                        <button
-                          className={`${styles.correctBtn} ${choice.is_correct ? styles.correct : ""}`}
-                          onClick={() => {
-                            const newChoices = [...questionForm.choices];
-                            newChoices[index] = { ...choice, is_correct: !choice.is_correct };
-                            setQuestionForm({ ...questionForm, choices: newChoices });
-                          }}
-                        >
-                          Mark correct
-                        </button>
+
+                        <div className={styles.choiceContent}>
+                          <div className={styles.choiceText}>
+                            <label>Answer Text</label>
+                            <input
+                              type="text"
+                              value={choice.text}
+                              placeholder={
+                                editingQuestion
+                                  ? `Choice ${String.fromCharCode(
+                                      65 + index
+                                    )} text`
+                                  : "Choice text (read-only)"
+                              }
+                              readOnly={
+                                questionForm.type === "true_false" ||
+                                !editingQuestion
+                              }
+                              disabled={!editingQuestion}
+                              onChange={(e) => {
+                                if (
+                                  questionForm.type === "true_false" ||
+                                  !editingQuestion
+                                )
+                                  return;
+                                const newChoices = [...questionForm.choices];
+                                newChoices[index] = {
+                                  ...choice,
+                                  text: e.target.value,
+                                };
+                                setQuestionForm({
+                                  ...questionForm,
+                                  choices: newChoices,
+                                });
+                                setHasUnsavedChanges(true);
+                              }}
+                            />
+                          </div>
+
+                          {questionForm.type !== "true_false" && (
+                            <div className={styles.choiceImage}>
+                              <label>Choice Image (optional)</label>
+                              <ImageUpload
+                                currentImageUrl={choice.image_url || ""}
+                                onImageChange={(url) => {
+                                  if (!editingQuestion) return;
+                                  const newChoices = [...questionForm.choices];
+                                  newChoices[index] = {
+                                    ...choice,
+                                    image_url: url,
+                                  };
+                                  setQuestionForm({
+                                    ...questionForm,
+                                    choices: newChoices,
+                                  });
+                                  setHasUnsavedChanges(true);
+                                }}
+                                folder="choices"
+                                prefix={`choice_${String.fromCharCode(
+                                  65 + index
+                                )}`}
+                                placeholder={
+                                  editingQuestion
+                                    ? "Add image for this choice"
+                                    : "Choice image (view only)"
+                                }
+                                className="compact"
+                                disabled={!editingQuestion}
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className={styles.questionFormActions}>
-                  <button className={styles.deleteQuestionBtn}>Delete</button>
-                  <button className={styles.saveDraftBtn} onClick={cancelQuestionEdit}>
-                    Save draft
-                  </button>
-                  <button 
-                    className={styles.saveQuestionBtn} 
-                    onClick={saveQuestion}
-                    disabled={!questionForm.text.trim()}
-                  >
-                    {editingQuestion ? (selectedQuestion ? "Save question" : "Save question") : "Save question"}
-                  </button>
-                </div>
+                {editingQuestion && (
+                  <div className={styles.questionFormActions}>
+                    <button className={styles.deleteQuestionBtn}>Delete</button>
+                    <button
+                      className={styles.saveDraftBtn}
+                      onClick={cancelQuestionEdit}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className={styles.saveQuestionBtn}
+                      onClick={saveQuestion}
+                      disabled={!questionForm.text.trim() || (selectedQuestion && !hasUnsavedChanges)}
+                      title={selectedQuestion && !hasUnsavedChanges ? "No changes to save" : ""}
+                    >
+                      {editingQuestion
+                        ? selectedQuestion
+                          ? hasUnsavedChanges
+                            ? "Save Changes"
+                            : "Save Question"
+                          : "Save Question"
+                        : "Save Question"}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
           {/* Draft Warning */}
-          {selectedChapter && !selectedChapter.published && (
+          {selectedChapter && !selectedChapter.published && !selectedChapter.draft_of && (
             <div className={styles.draftWarning}>
-              ⚠️ This chapter is saved as a draft and is not visible to students yet. 
-              Click "Publish Chapter" to make it live.
+              ⚠️ This chapter is saved as a draft and is not visible to students yet. Click "Publish Chapter" to make it live.
+            </div>
+          )}
+          {selectedChapter && selectedChapter.draft_of && (
+            <div className={styles.draftWarning}>
+              ✏️ You are viewing draft changes for a published chapter. Publish to apply these changes or Discard to revert.
             </div>
           )}
 
-          <div className={styles.formActions}>
-            <button className={styles.discardBtn} onClick={cancelEdit}>
-              Discard
-            </button>
-            <button
-              className={styles.saveBtn}
-              onClick={saveChapter}
-              disabled={!chapterForm.title.trim()}
-            >
-              {editing ? "Save Draft" : "Save as Draft"}
-            </button>
-            {selectedChapter && (
-              <>
-                {!selectedChapter.published ? (
-                  <button
-                    className={styles.publishBtn}
-                    onClick={() => publishChapter(selectedChapter)}
-                    disabled={!selectedChapter.title}
-                  >
-                    Publish Chapter
-                  </button>
-                ) : (
-                  <button
-                    className={styles.unpublishBtn}
-                    onClick={() => unpublishChapter(selectedChapter)}
-                  >
-                    Unpublish Chapter
-                  </button>
-                )}
-              </>
-            )}
-          </div>
+          {/* Legacy chapter action bar removed in favor of inline edit controls */}
         </div>
       </div>
 
       <div className={styles.courseActions}>
-        <button 
+        <button
           className={styles.saveDraftBtn}
-          onClick={() => alert('All chapters are automatically saved as drafts. Use individual chapter publish buttons to make them live.')}
+          onClick={() =>
+            alert(
+              "All chapters are automatically saved as drafts. Use individual chapter publish buttons to make them live."
+            )
+          }
         >
           All Saved as Drafts
         </button>
-        <button 
+        <button
           className={styles.publishBtn}
           onClick={() => {
-            const unpublishedChapters = chapters.filter(ch => !ch.published);
+            const unpublishedChapters = chapters.filter((ch) => !ch.published);
             if (unpublishedChapters.length === 0) {
-              alert('All chapters are already published!');
+              alert("All chapters are already published!");
               return;
             }
-            if (confirm(`Publish ${unpublishedChapters.length} unpublished chapters?`)) {
-              unpublishedChapters.forEach(chapter => publishChapter(chapter));
+            if (
+              confirm(
+                `Publish ${unpublishedChapters.length} unpublished chapters?`
+              )
+            ) {
+              unpublishedChapters.forEach((chapter) => publishChapter(chapter));
             }
           }}
         >
@@ -1242,180 +1881,4 @@ function CourseManager({ course, onBack, onSelectChapter }) {
   );
 }
 
-function QuestionBuilder({ course, chapter, questionType, onBack }) {
-  const [questions, setQuestions] = useState([
-    { id: 1, type: "MCQ", points: 2, title: "Debug question 1" },
-    { id: 2, type: "MCQ", points: 2, title: "Debug question 2" },
-    { id: 3, type: "MCQ", points: 2, title: "Debug question 3" },
-    { id: 4, type: "MCQ", points: 2, title: "Debug question 4" },
-    { id: 5, type: "MCQ", points: 2, title: "Debug question 5" },
-    { id: 6, type: "MCQ", points: 2, title: "Debug question 6" },
-  ]);
-
-  const [activeQuestion, setActiveQuestion] = useState(questions[1]); // Default to question 2
-  const [questionForm, setQuestionForm] = useState({
-    type: "Multiple Choice",
-    points: 2,
-    position: 2,
-    prompt: "Which hybridization best describes carbon in ethene (C2H4)?",
-    image: null,
-    choices: [
-      { id: "A", text: "Choice text", correct: false },
-      { id: "B", text: "Choice text", correct: false },
-      { id: "C", text: "Choice text", correct: true },
-      { id: "D", text: "Choice text", correct: false },
-    ],
-  });
-
-  const [activeTab, setActiveTab] = useState("practice");
-
-  return (
-    <div className={styles.questionBuilder}>
-      <div className={styles.questionLayout}>
-        {/* Questions Sidebar */}
-        <div className={styles.questionsSidebar}>
-          <div className={styles.questionsHeader}>
-            <div className={styles.tabToggle}>
-              <button
-                className={`${styles.tabBtn} ${
-                  activeTab === "practice" ? styles.active : ""
-                }`}
-                onClick={() => setActiveTab("practice")}
-              >
-                Practice Questions
-              </button>
-              <button
-                className={`${styles.tabBtn} ${
-                  activeTab === "quiz" ? styles.active : ""
-                }`}
-                onClick={() => setActiveTab("quiz")}
-              >
-                Quiz Questions
-              </button>
-            </div>
-          </div>
-
-          <div className={styles.questionsContent}>
-            <h4>Questions</h4>
-            <button className={styles.addQuestionBtn}>+ Add Question</button>
-
-            <div className={styles.questionsList}>
-              {questions.map((question, index) => (
-                <div
-                  key={question.id}
-                  className={`${styles.questionItem} ${
-                    activeQuestion?.id === question.id ? styles.active : ""
-                  }`}
-                  onClick={() => setActiveQuestion(question)}
-                >
-                  <div className={styles.questionNumber}>
-                    {index + 1}. {question.type} • {question.points} pts
-                  </div>
-                  <div className={styles.questionTitle}>{question.title}</div>
-                  <button className={styles.questionMenu}>⋯</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Question Editor */}
-        <div className={styles.questionEditor}>
-          <div className={styles.editorHeader}>
-            <h2>Edit Question {activeQuestion?.id}</h2>
-            <div className={styles.editorMeta}>
-              <div className={styles.metaItem}>
-                <label>Type</label>
-                <select value={questionForm.type}>
-                  <option>Multiple Choice</option>
-                </select>
-              </div>
-              <div className={styles.metaItem}>
-                <label>Points</label>
-                <input type="number" value={questionForm.points} />
-              </div>
-              <div className={styles.metaItem}>
-                <label>Position</label>
-                <input type="number" value={questionForm.position} />
-              </div>
-            </div>
-          </div>
-
-          <div className={styles.editorContent}>
-            <div className={styles.formGroup}>
-              <label>Prompt</label>
-              <textarea
-                value={questionForm.prompt}
-                onChange={(e) =>
-                  setQuestionForm({ ...questionForm, prompt: e.target.value })
-                }
-                placeholder="Which hybridization best describes carbon in ethene (C2H4)?"
-              />
-            </div>
-
-            <div className={styles.formGroup}>
-              <label>Image (optional)</label>
-              <div className={styles.imageUpload}>
-                <div className={styles.uploadArea}>
-                  <div className={styles.uploadPlaceholder}>
-                    Drop image here
-                  </div>
-                </div>
-                <button className={styles.uploadBtn}>Upload</button>
-              </div>
-            </div>
-
-            <div className={styles.formGroup}>
-              <label>Answer choices</label>
-              <div className={styles.choicesGrid}>
-                {questionForm.choices.map((choice) => (
-                  <div key={choice.id} className={styles.choiceItem}>
-                    <span className={styles.choiceLabel}>{choice.id})</span>
-                    <input
-                      type="text"
-                      value={choice.text}
-                      onChange={(e) => {
-                        const newChoices = questionForm.choices.map((c) =>
-                          c.id === choice.id
-                            ? { ...c, text: e.target.value }
-                            : c
-                        );
-                        setQuestionForm({
-                          ...questionForm,
-                          choices: newChoices,
-                        });
-                      }}
-                    />
-                    <button
-                      className={`${styles.correctBtn} ${
-                        choice.correct ? styles.correct : ""
-                      }`}
-                      onClick={() => {
-                        const newChoices = questionForm.choices.map((c) => ({
-                          ...c,
-                          correct: c.id === choice.id ? !c.correct : false,
-                        }));
-                        setQuestionForm({
-                          ...questionForm,
-                          choices: newChoices,
-                        });
-                      }}
-                    >
-                      Mark correct
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className={styles.editorActions}>
-            <button className={styles.deleteBtn}>Delete</button>
-            <button className={styles.saveDraftBtn}>Save draft</button>
-            <button className={styles.saveQuestionBtn}>Save question</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+// Legacy QuestionBuilder component removed as part of cleanup

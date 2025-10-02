@@ -37,13 +37,62 @@ export async function PUT(request, { params }) {
   try {
     const { id } = params;
     const body = await request.json();
-    const { title, description, video_url, position } = body;
+    const { title, description, video_url, position, draft = false } = body;
 
     if (!title) {
       return new Response(JSON.stringify({ error: "title is required" }), {
         status: 400,
         headers: { "content-type": "application/json" },
       });
+    }
+
+    // If draft flag is true, create (or reuse) a draft row instead of updating original
+    if (draft) {
+      // Fetch original
+      const { data: original, error: origErr } = await supabaseAdmin
+        .from("chapters")
+        .select("id, course_id")
+        .eq("id", id)
+        .maybeSingle();
+      if (origErr || !original) {
+        return new Response(JSON.stringify({ error: "Original chapter not found" }), { status: 404 });
+      }
+
+      // Check if a draft already exists
+      const { data: existingDraft } = await supabaseAdmin
+        .from("chapters")
+        .select("id")
+        .eq("draft_of", id)
+        .maybeSingle();
+
+      const basePayload = {
+        course_id: original.course_id,
+        title,
+        description: description || null,
+        video_url: video_url || null,
+        position: position === undefined ? null : position,
+        published: false,
+        draft_of: id,
+      };
+
+      if (existingDraft?.id) {
+        const { data: updatedDraft, error: updDraftErr } = await supabaseAdmin
+          .from("chapters")
+          .update(basePayload)
+          .eq("id", existingDraft.id)
+          .select()
+          .maybeSingle();
+        if (updDraftErr) throw updDraftErr;
+        return new Response(JSON.stringify(updatedDraft), { status: 200 });
+      } else {
+        const { data: newDraft, error: newDraftErr } = await supabaseAdmin
+          .from("chapters")
+          .insert(basePayload)
+          .select()
+          .maybeSingle();
+        if (newDraftErr) throw newDraftErr;
+        return new Response(JSON.stringify(newDraft), { status: 201 });
+      }
     }
 
     const updateData = {
@@ -117,28 +166,33 @@ export async function DELETE(request, { params }) {
 
     if (quizzes && quizzes.length > 0) {
       const quizIds = quizzes.map((q) => q.id);
-
-      // Delete choices first, then questions
-      const { error: choicesError } = await supabaseAdmin
-        .from("choices")
-        .delete()
-        .in(
-          "question_id",
-          supabaseAdmin.from("questions").select("id").in("quiz_id", quizIds)
-        );
-
-      if (choicesError) {
-        console.warn("Error deleting related choices:", choicesError);
+      // Fetch question ids explicitly (cannot pass a query builder into .in())
+      const { data: questions, error: fetchQuestionsErr } = await supabaseAdmin
+        .from("questions")
+        .select("id")
+        .in("quiz_id", quizIds);
+      if (fetchQuestionsErr) {
+        console.warn("Error fetching related questions:", fetchQuestionsErr);
       }
 
-      // Delete questions
-      const { error: questionsError } = await supabaseAdmin
-        .from("questions")
-        .delete()
-        .in("quiz_id", quizIds);
-
-      if (questionsError) {
-        console.warn("Error deleting related questions:", questionsError);
+      if (questions && questions.length > 0) {
+        const questionIds = questions.map((q) => q.id);
+        // Delete choices first
+        const { error: choicesError } = await supabaseAdmin
+          .from("choices")
+          .delete()
+          .in("question_id", questionIds);
+        if (choicesError) {
+          console.warn("Error deleting related choices:", choicesError);
+        }
+        // Delete questions
+        const { error: questionsError } = await supabaseAdmin
+          .from("questions")
+          .delete()
+          .in("id", questionIds);
+        if (questionsError) {
+          console.warn("Error deleting related questions:", questionsError);
+        }
       }
 
       // Delete quizzes

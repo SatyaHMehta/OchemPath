@@ -286,7 +286,7 @@ function QuestionsManager({ chapterId }) {
 
   return (
     <div style={{ marginTop: 8, borderTop: "1px solid #eee", paddingTop: 8 }}>
-      <h5>Practice Questions</h5>
+      <h5>Practice Quiz</h5>
       {loading ? (
         <div>Loading…</div>
       ) : (

@@ -16,14 +16,17 @@ const Professor = () => {
   const [newQuestion, setNewQuestion] = useState({
     text: "",
     type: "multiple_choice",
-    choices: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }],
+    choices: [
+      { text: "", isCorrect: false },
+      { text: "", isCorrect: false },
+    ],
     image: null,
-    imagePreview: null
+    imagePreview: null,
   });
   const [newQuiz, setNewQuiz] = useState({
     title: "",
     description: "",
-    type: "practice"
+    type: "practice",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -152,14 +155,14 @@ const Professor = () => {
   const handleQuestionTextChange = (e) => {
     setNewQuestion({
       ...newQuestion,
-      text: e.target.value
+      text: e.target.value,
     });
   };
 
   const handleQuestionTypeChange = (e) => {
     setNewQuestion({
       ...newQuestion,
-      type: e.target.value
+      type: e.target.value,
     });
   };
 
@@ -168,25 +171,25 @@ const Professor = () => {
     updatedChoices[index].text = value;
     setNewQuestion({
       ...newQuestion,
-      choices: updatedChoices
+      choices: updatedChoices,
     });
   };
 
   const handleCorrectChoiceChange = (index) => {
     const updatedChoices = newQuestion.choices.map((choice, i) => ({
       ...choice,
-      isCorrect: i === index
+      isCorrect: i === index,
     }));
     setNewQuestion({
       ...newQuestion,
-      choices: updatedChoices
+      choices: updatedChoices,
     });
   };
 
   const addChoice = () => {
     setNewQuestion({
       ...newQuestion,
-      choices: [...newQuestion.choices, { text: "", isCorrect: false }]
+      choices: [...newQuestion.choices, { text: "", isCorrect: false }],
     });
   };
 
@@ -195,7 +198,7 @@ const Professor = () => {
     const updatedChoices = newQuestion.choices.filter((_, i) => i !== index);
     setNewQuestion({
       ...newQuestion,
-      choices: updatedChoices
+      choices: updatedChoices,
     });
   };
 
@@ -207,7 +210,7 @@ const Professor = () => {
         setNewQuestion({
           ...newQuestion,
           image: file,
-          imagePreview: reader.result
+          imagePreview: reader.result,
         });
       };
       reader.readAsDataURL(file);
@@ -220,12 +223,12 @@ const Professor = () => {
       return;
     }
 
-    if (newQuestion.choices.filter(choice => choice.text.trim()).length < 2) {
+    if (newQuestion.choices.filter((choice) => choice.text.trim()).length < 2) {
       setError("At least two choices are required");
       return;
     }
 
-    if (!newQuestion.choices.some(choice => choice.isCorrect)) {
+    if (!newQuestion.choices.some((choice) => choice.isCorrect)) {
       setError("At least one correct answer is required");
       return;
     }
@@ -254,7 +257,7 @@ const Professor = () => {
 
       const response = await fetch("/api/questions", {
         method: "POST",
-        body: formData
+        body: formData,
       });
 
       if (response.ok) {
@@ -262,9 +265,12 @@ const Professor = () => {
         setNewQuestion({
           text: "",
           type: "multiple_choice",
-          choices: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }],
+          choices: [
+            { text: "", isCorrect: false },
+            { text: "", isCorrect: false },
+          ],
           image: null,
-          imagePreview: null
+          imagePreview: null,
         });
         setShowQuestionModal(false);
         fetchQuestions(selectedQuiz); // Refresh questions
@@ -293,15 +299,15 @@ const Professor = () => {
       const response = await fetch("/api/quizzes", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           title: newQuiz.title,
           description: newQuiz.description,
           course_id: selectedCourse,
           chapter_id: selectedChapter,
-          type: newQuiz.type
-        })
+          type: newQuiz.type,
+        }),
       });
 
       if (response.ok) {
@@ -310,7 +316,7 @@ const Professor = () => {
         setNewQuiz({
           title: "",
           description: "",
-          type: "practice"
+          type: "practice",
         });
         setShowCreateQuizModal(false);
         fetchChapters(selectedCourse); // Refresh chapters to get new quiz
@@ -334,7 +340,7 @@ const Professor = () => {
 
     try {
       const response = await fetch(`/api/questions/${questionId}`, {
-        method: "DELETE"
+        method: "DELETE",
       });
 
       if (response.ok) {
@@ -355,7 +361,9 @@ const Professor = () => {
     <div className={styles.container}>
       <div className={styles.header}>
         <h1>Professor Dashboard</h1>
-        <p>Add and manage practice questions and quiz questions for each chapter</p>
+        <p>
+          Add and manage practice questions and quiz questions for each chapter
+        </p>
       </div>
 
       {error && <div className={styles.error}>{error}</div>}
@@ -524,7 +532,9 @@ const Professor = () => {
                       type="text"
                       className={styles.formControl}
                       value={choice.text}
-                      onChange={(e) => handleChoiceTextChange(index, e.target.value)}
+                      onChange={(e) =>
+                        handleChoiceTextChange(index, e.target.value)
+                      }
                       placeholder={`Choice ${index + 1}`}
                     />
                     {newQuestion.choices.length > 2 && (
@@ -596,7 +606,9 @@ const Professor = () => {
                 id="quiz-title"
                 className={styles.formControl}
                 value={newQuiz.title}
-                onChange={(e) => setNewQuiz({...newQuiz, title: e.target.value})}
+                onChange={(e) =>
+                  setNewQuiz({ ...newQuiz, title: e.target.value })
+                }
               />
             </div>
 
@@ -606,7 +618,9 @@ const Professor = () => {
                 id="quiz-description"
                 className={styles.formControl}
                 value={newQuiz.description}
-                onChange={(e) => setNewQuiz({...newQuiz, description: e.target.value})}
+                onChange={(e) =>
+                  setNewQuiz({ ...newQuiz, description: e.target.value })
+                }
                 rows={3}
               />
             </div>
@@ -617,7 +631,9 @@ const Professor = () => {
                 id="quiz-type"
                 className={styles.formControl}
                 value={newQuiz.type}
-                onChange={(e) => setNewQuiz({...newQuiz, type: e.target.value})}
+                onChange={(e) =>
+                  setNewQuiz({ ...newQuiz, type: e.target.value })
+                }
               >
                 <option value="practice">Practice Quiz</option>
                 <option value="official">Official Quiz</option>

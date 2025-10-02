@@ -4,13 +4,13 @@ export async function PUT(req, { params }) {
   try {
     const { id } = params;
     const body = await req.json();
-    const { text, type, points, image, choices, published } = body;
+    const { text, type, points, image_url, choices, published } = body;
 
     const updatePayload = {};
     if (text !== undefined) updatePayload.text = text;
     if (type !== undefined) updatePayload.type = type;
     if (points !== undefined) updatePayload.points = points;
-    if (image !== undefined) updatePayload.image = image;
+    if (image_url !== undefined) updatePayload.image = image_url; // Map image_url from frontend to image column in database
     if (published !== undefined) updatePayload.published = published;
 
     if (Object.keys(updatePayload).length > 0) {
@@ -33,6 +33,7 @@ export async function PUT(req, { params }) {
           question_id: id,
           text: c.text,
           is_correct: !!c.is_correct,
+          image_url: c.image_url || null,
         }));
         const { error: insErr } = await supabaseAdmin
           .from("choices")
@@ -44,12 +45,20 @@ export async function PUT(req, { params }) {
     const { data, error } = await supabaseAdmin
       .from("questions")
       .select(
-        "id, position, text, type, points, image, published, choices(id, text, is_correct)"
+        "id, position, text, type, points, image, published, choices(id, text, is_correct, image_url)"
       )
       .eq("id", id)
       .maybeSingle();
     if (error) throw error;
-    return new Response(JSON.stringify(data), {
+
+    // Map database 'image' field to frontend-expected 'image_url' field
+    const responseData = {
+      ...data,
+      image_url: data.image,
+      image: undefined, // Remove the original image field
+    };
+
+    return new Response(JSON.stringify(responseData), {
       status: 200,
       headers: { "content-type": "application/json" },
     });

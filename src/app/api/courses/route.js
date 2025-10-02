@@ -1,6 +1,6 @@
 import supabaseAdmin from "@/lib/supabaseServer";
 
-// Helper: extract a YouTube id from a url-like string or accept an id
+//         if (insErr) {: extract a YouTube id from a url-like string or accept an id
 function pickYouTubeId(seed) {
   // simple placeholder ids list
   const sampleIds = [
@@ -95,7 +95,7 @@ export async function GET() {
     });
   } catch (err) {
     // If Supabase fetch fails (network, misconfigured URL), return 500
-    console.warn("Supabase error in /api/courses:", err?.message || err);
+
     return new Response(JSON.stringify({ error: "failed to fetch courses" }), {
       status: 500,
       headers: { "content-type": "application/json" },

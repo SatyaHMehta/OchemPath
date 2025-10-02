@@ -28,9 +28,7 @@ export async function GET(request, { params }) {
         headers: { "content-type": "application/json" },
       });
     }
-  } catch (err) {
-    console.warn("supabase error fetching course", id, err?.message || err);
-  }
+  } catch (err) {}
 
   // If DB lookup failed or no course found, return 404
   return new Response(JSON.stringify({ error: "not found" }), {

@@ -1,0 +1,242 @@
+/* Image Upload Component Styles */
+.imageUpload {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.uploadArea {
+  border: 2px dashed #4a4a4a;
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #2a2a2a;
+  position: relative;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.uploadArea:hover {
+  border-color: #666;
+  background: #333;
+}
+
+.uploadArea.dragActive {
+  border-color: #007bff;
+  background: #1a3a5c;
+}
+
+.uploadArea.hasImage {
+  padding: 0;
+  border: 2px solid #4a4a4a;
+  min-height: 200px;
+}
+
+.uploadArea.disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  background: #1a1a1a;
+  border-color: #333;
+}
+
+.uploadArea.disabled:hover {
+  border-color: #333;
+  background: #1a1a1a;
+}
+
+.addImageBtn.disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  background: #1a1a1a;
+  border-color: #333;
+}
+
+.uploadPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #ccc;
+}
+
+.uploadIcon {
+  font-size: 2rem;
+  opacity: 0.7;
+}
+
+.uploadText {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.uploadSubtext {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.imagePreview {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  border-radius: 6px;
+  overflow: hidden;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.imagePreview img {
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.uploadingOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: white;
+  font-size: 0.9rem;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #fff3;
+  border-top: 2px solid #fff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.addImageBtn {
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: 1px dashed #666;
+  background: transparent;
+  color: #ccc;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+}
+
+.addImageBtn:hover {
+  border-color: #007bff;
+  color: #007bff;
+  background: rgba(0, 123, 255, 0.1);
+}
+
+.imageControls {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.removeBtn, .replaceBtn, .cancelBtn {
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid #666;
+  background: transparent;
+  color: #ccc;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.removeBtn:hover {
+  background: #dc3545;
+  border-color: #dc3545;
+  color: white;
+}
+
+.replaceBtn:hover {
+  background: #007bff;
+  border-color: #007bff;
+  color: white;
+}
+
+.cancelBtn:hover {
+  background: #6c757d;
+  border-color: #6c757d;
+  color: white;
+}
+
+.error {
+  color: #dc3545;
+  font-size: 0.75rem;
+  text-align: center;
+  padding: 4px;
+  background: rgba(220, 53, 69, 0.1);
+  border-radius: 4px;
+  border: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+/* Compact version for answer choices */
+.imageUpload.compact .addImageBtn {
+  min-height: 32px;
+  padding: 4px 12px;
+  font-size: 0.7rem;
+}
+
+.imageUpload.compact .uploadArea {
+  min-height: 60px;
+  padding: 12px;
+}
+
+.imageUpload.compact .uploadPlaceholder {
+  gap: 2px;
+}
+
+.imageUpload.compact .uploadIcon {
+  font-size: 1.2rem;
+}
+
+.imageUpload.compact .uploadText {
+  font-size: 0.7rem;
+}
+
+.imageUpload.compact .uploadSubtext {
+  font-size: 0.6rem;
+}
+
+.imageUpload.compact .imagePreview {
+  min-height: 60px;
+}
+
+.imageUpload.compact .imagePreview img {
+  max-height: 80px;
+}
+
+.imageUpload.compact .imageControls {
+  margin-top: 4px;
+}
+
+.imageUpload.compact .removeBtn, 
+.imageUpload.compact .replaceBtn, 
+.imageUpload.compact .cancelBtn {
+  padding: 3px 8px;
+  font-size: 0.65rem;
+}

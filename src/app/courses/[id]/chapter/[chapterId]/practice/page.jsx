@@ -2,10 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import styles from "./page.module.css";
+import { useRouter } from "next/navigation";
 
 export default function PracticePage({ params }) {
   const { id, chapterId } = params || {};
-
   const [course, setCourse] = useState(null);
   const [chapter, setChapter] = useState(null);
   const [questions, setQuestions] = useState(null); // null = loading, [] = loaded but empty
@@ -75,16 +75,24 @@ export default function PracticePage({ params }) {
           Array.isArray(quizzes) && quizzes.length ? quizzes[0] : null;
         if (quiz && Array.isArray(quiz.questions)) {
           const mapped = quiz.questions.map((q) => {
-            const opts = (q.choices || []).map((c) => c.text);
+            const opts = (q.choices || []).map((c) => ({
+              text: c.text,
+              image: c.image_url || null,
+            }));
             const correctIndex = (q.choices || []).findIndex(
               (c) => c.is_correct
             );
             return {
               id: q.id,
               text: q.text,
-              options: opts.length ? opts : ["True", "False"],
+              options: opts.length
+                ? opts
+                : [
+                    { text: "True", image: null },
+                    { text: "False", image: null },
+                  ],
               correctIndex: correctIndex >= 0 ? correctIndex : null,
-              image: q.image || null,
+              image: q.image_url || null,
             };
           });
           setQuestions(mapped);
@@ -126,10 +134,8 @@ export default function PracticePage({ params }) {
   if (Array.isArray(questions) && questions.length === 0)
     return (
       <div className={styles.notFound}>
-        <h3>No practice questions found</h3>
-        <p>
-          {loadError ?? "There are no practice questions for this chapter yet."}
-        </p>
+        <h3>No practice quiz found</h3>
+        <p>{loadError ?? "There is no practice quiz for this chapter yet."}</p>
       </div>
     );
 
@@ -187,10 +193,15 @@ export default function PracticePage({ params }) {
                       alt={`question-${q.id}`}
                       role="button"
                       tabIndex={0}
+                      crossOrigin="anonymous"
                       onClick={() => setZoomImage(q.image)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ")
                           setZoomImage(q.image);
+                      }}
+                      onError={(e) => {
+                        console.error("Image failed to load:", q.image);
+                        e.target.style.display = "none"; // Hide broken image
                       }}
                     />
                   </div>
@@ -208,6 +219,12 @@ export default function PracticePage({ params }) {
                       if (chosen) cls.push(styles.optSelected);
                       if (showCorrect) cls.push(styles.optCorrect);
                       if (showWrong) cls.push(styles.optWrong);
+
+                      const optionText =
+                        typeof opt === "string" ? opt : opt.text;
+                      const optionImage =
+                        typeof opt === "object" ? opt.image : null;
+
                       return (
                         <button
                           key={idx}
@@ -215,7 +232,19 @@ export default function PracticePage({ params }) {
                           onClick={() => select(q.id, idx)}
                           type="button"
                         >
-                          <span className={styles.optLabel}>{opt}</span>
+                          <span className={styles.optLabel}>{optionText}</span>
+                          {optionImage && (
+                            <div className={styles.optImage}>
+                              <img
+                                src={optionImage}
+                                alt={`Option ${String.fromCharCode(65 + idx)}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setZoomImage(optionImage);
+                                }}
+                              />
+                            </div>
+                          )}
                         </button>
                       );
                     })}
