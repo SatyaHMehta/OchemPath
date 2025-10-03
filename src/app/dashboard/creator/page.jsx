@@ -115,7 +115,9 @@ export default function CreatorDashboard() {
         </header>
 
         {/* Content based on active view */}
-        {activeView === "overview" || activeView === "courses" || activeView === "course" ? (
+        {activeView === "overview" ||
+        activeView === "courses" ||
+        activeView === "course" ? (
           selectedCourse ? (
             <CourseManager
               course={selectedCourse}
@@ -275,6 +277,29 @@ function CourseManager({ course, onBack, onSelectChapter }) {
   const [validationMessage, setValidationMessage] = useState("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  // Quiz questions parallel state
+  const [quizQuestions, setQuizQuestions] = useState([]);
+  const [quizQuestionsLoading, setQuizQuestionsLoading] = useState(false);
+  const [quizSelectedQuestion, setQuizSelectedQuestion] = useState(null);
+  const [quizEditingQuestion, setQuizEditingQuestion] = useState(false);
+  const [quizSuccessMessage, setQuizSuccessMessage] = useState("");
+  const [quizValidationMessage, setQuizValidationMessage] = useState("");
+  const [quizHasUnsavedChanges, setQuizHasUnsavedChanges] = useState(false);
+  const [quizQuestionForm, setQuizQuestionForm] = useState({
+    text: "",
+    type: "multiple_choice",
+    points: 2,
+    position: 1,
+    image_url: "",
+    published: true,
+    choices: [
+      { text: "", is_correct: false, image_url: "" },
+      { text: "", is_correct: false, image_url: "" },
+      { text: "", is_correct: false, image_url: "" },
+      { text: "", is_correct: false, image_url: "" },
+    ],
+  });
+
   const [chapterForm, setChapterForm] = useState({
     title: "",
     description: "",
@@ -282,7 +307,8 @@ function CourseManager({ course, onBack, onSelectChapter }) {
     position: 1,
   });
   const [editingChapter, setEditingChapter] = useState(false);
-  const [hasChapterUnsavedChanges, setHasChapterUnsavedChanges] = useState(false);
+  const [hasChapterUnsavedChanges, setHasChapterUnsavedChanges] =
+    useState(false);
   const [chapterErrors, setChapterErrors] = useState({});
 
   const [questionForm, setQuestionForm] = useState({
@@ -365,15 +391,17 @@ function CourseManager({ course, onBack, onSelectChapter }) {
     // Validate fields first; allow empty fields to show errors instead of silently disabling button
     const errors = {};
     if (!chapterForm.title.trim()) errors.title = "Title is required";
-    if (!chapterForm.description.trim()) errors.description = "Description is required";
+    if (!chapterForm.description.trim())
+      errors.description = "Description is required";
     const posNum = parseInt(chapterForm.position, 10);
-    if (isNaN(posNum) || posNum <= 0) errors.position = "Position must be a positive number";
-      // Require YouTube link (previously optional) and validate basic format
-      if (!chapterForm.video_url || !chapterForm.video_url.trim()) {
-        errors.video_url = "YouTube link is required";
-      } else if (!/^https?:\/\//i.test(chapterForm.video_url.trim())) {
-        errors.video_url = "Must be a valid URL (starts with http/https)";
-      }
+    if (isNaN(posNum) || posNum <= 0)
+      errors.position = "Position must be a positive number";
+    // Require YouTube link (previously optional) and validate basic format
+    if (!chapterForm.video_url || !chapterForm.video_url.trim()) {
+      errors.video_url = "YouTube link is required";
+    } else if (!/^https?:\/\//i.test(chapterForm.video_url.trim())) {
+      errors.video_url = "Must be a valid URL (starts with http/https)";
+    }
     setChapterErrors(errors);
     if (Object.keys(errors).length > 0) {
       return; // Do not proceed if validation fails
@@ -387,7 +415,8 @@ function CourseManager({ course, onBack, onSelectChapter }) {
       let response;
       if (selectedChapter) {
         // If original is published, create/update draft instead of overwriting
-        const isPublishedOriginal = selectedChapter.published && !selectedChapter.draft_of;
+        const isPublishedOriginal =
+          selectedChapter.published && !selectedChapter.draft_of;
         response = await fetch(`/api/admin/chapters/${selectedChapter.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -521,21 +550,26 @@ function CourseManager({ course, onBack, onSelectChapter }) {
   // Single draft discard helper (was missing -> caused onClick reference error)
   const discardChapterDraft = async (draftChapter) => {
     if (!draftChapter?.draft_of) return;
-    if (!confirm("Discard this draft and keep the currently published chapter?")) return;
+    if (
+      !confirm("Discard this draft and keep the currently published chapter?")
+    )
+      return;
     try {
-      const res = await fetch(`/api/admin/chapters/${draftChapter.id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/chapters/${draftChapter.id}`, {
+        method: "DELETE",
+      });
       if (!res.ok) {
-        const err = await res.json().catch(()=>({}));
-        alert(err.error || 'Failed to discard draft');
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to discard draft");
         return;
       }
       await loadChapters();
       // Re-select original if present
-      const original = chapters.find(c => c.id === draftChapter.draft_of);
+      const original = chapters.find((c) => c.id === draftChapter.draft_of);
       if (original) selectChapter(original);
     } catch (e) {
-      console.error('Discard draft error', e);
-      alert('Failed to discard draft');
+      console.error("Discard draft error", e);
+      alert("Failed to discard draft");
     }
   };
 
@@ -543,26 +577,38 @@ function CourseManager({ course, onBack, onSelectChapter }) {
   const [bulkBusy, setBulkBusy] = useState(false);
   const bulkPublishChapterDrafts = async () => {
     if (bulkBusy) return;
-    const draftCount = chapters.filter(c => c.draft_of).length;
+    const draftCount = chapters.filter((c) => c.draft_of).length;
     if (draftCount === 0) return;
-    if (!confirm(`Publish ${draftCount} chapter draft change${draftCount === 1 ? '' : 's'}?`)) return;
+    if (
+      !confirm(
+        `Publish ${draftCount} chapter draft change${
+          draftCount === 1 ? "" : "s"
+        }?`
+      )
+    )
+      return;
     setBulkBusy(true);
     try {
-      const resp = await fetch(`/api/admin/chapters/publish?course_id=${course.id}`, { method: 'PATCH' });
+      const resp = await fetch(
+        `/api/admin/chapters/publish?course_id=${course.id}`,
+        { method: "PATCH" }
+      );
       if (!resp.ok) {
-        const err = await resp.json().catch(()=>({}));
-        alert(err.error || 'Bulk publish failed');
+        const err = await resp.json().catch(() => ({}));
+        alert(err.error || "Bulk publish failed");
       } else {
         await loadChapters();
         // If a draft was selected, select its original now
         if (selectedChapter?.draft_of) {
-          const original = chapters.find(c => c.id === selectedChapter.draft_of);
-            if (original) selectChapter(original);
+          const original = chapters.find(
+            (c) => c.id === selectedChapter.draft_of
+          );
+          if (original) selectChapter(original);
         }
       }
     } catch (e) {
-      console.error('Bulk publish error', e);
-      alert('Failed to publish drafts');
+      console.error("Bulk publish error", e);
+      alert("Failed to publish drafts");
     } finally {
       setBulkBusy(false);
     }
@@ -570,25 +616,38 @@ function CourseManager({ course, onBack, onSelectChapter }) {
 
   const bulkDiscardChapterDrafts = async () => {
     if (bulkBusy) return;
-    const draftCount = chapters.filter(c => c.draft_of).length;
+    const draftCount = chapters.filter((c) => c.draft_of).length;
     if (draftCount === 0) return;
-    if (!confirm(`Discard ALL ${draftCount} chapter draft change${draftCount === 1 ? '' : 's'}? This cannot be undone.`)) return;
+    if (
+      !confirm(
+        `Discard ALL ${draftCount} chapter draft change${
+          draftCount === 1 ? "" : "s"
+        }? This cannot be undone.`
+      )
+    )
+      return;
     setBulkBusy(true);
     try {
-      const resp = await fetch(`/api/admin/chapters/drafts?course_id=${course.id}`, { method: 'DELETE' });
+      const resp = await fetch(
+        `/api/admin/chapters/drafts?course_id=${course.id}`,
+        { method: "DELETE" }
+      );
       if (!resp.ok) {
-        const err = await resp.json().catch(()=>({}));
-        alert(err.error || 'Bulk discard failed');
+        const err = await resp.json().catch(() => ({}));
+        alert(err.error || "Bulk discard failed");
       } else {
         await loadChapters();
         if (selectedChapter?.draft_of) {
-          const original = chapters.find(c => c.id === selectedChapter.draft_of);
-          if (original) selectChapter(original); else setSelectedChapter(null);
+          const original = chapters.find(
+            (c) => c.id === selectedChapter.draft_of
+          );
+          if (original) selectChapter(original);
+          else setSelectedChapter(null);
         }
       }
     } catch (e) {
-      console.error('Bulk discard error', e);
-      alert('Failed to discard drafts');
+      console.error("Bulk discard error", e);
+      alert("Failed to discard drafts");
     } finally {
       setBulkBusy(false);
     }
@@ -660,24 +719,31 @@ function CourseManager({ course, onBack, onSelectChapter }) {
         setPracticeQuestions(collapsed);
         if (collapsed.length > 0) {
           // If currently selected question got replaced by its draft, select that draft
-            if (selectedQuestion) {
-              if (selectedQuestion.draft_of) {
-                // Selected is already a draft; keep
-                selectQuestion(collapsed.find(q => q.id === selectedQuestion.id) || collapsed[0]);
-              } else {
-                // Selected was an original; check if a draft now exists
-                const draft = collapsed.find(q => q.draft_of === selectedQuestion.id);
-                if (draft) {
-                  selectQuestion(draft);
-                } else {
-                  // Still original present
-                  const originalStill = collapsed.find(q => q.id === selectedQuestion.id);
-                  selectQuestion(originalStill || collapsed[0]);
-                }
-              }
+          if (selectedQuestion) {
+            if (selectedQuestion.draft_of) {
+              // Selected is already a draft; keep
+              selectQuestion(
+                collapsed.find((q) => q.id === selectedQuestion.id) ||
+                  collapsed[0]
+              );
             } else {
-              selectQuestion(collapsed[0]);
+              // Selected was an original; check if a draft now exists
+              const draft = collapsed.find(
+                (q) => q.draft_of === selectedQuestion.id
+              );
+              if (draft) {
+                selectQuestion(draft);
+              } else {
+                // Still original present
+                const originalStill = collapsed.find(
+                  (q) => q.id === selectedQuestion.id
+                );
+                selectQuestion(originalStill || collapsed[0]);
+              }
             }
+          } else {
+            selectQuestion(collapsed[0]);
+          }
         }
       } else {
         console.error("Failed to load practice questions");
@@ -953,11 +1019,12 @@ function CourseManager({ course, onBack, onSelectChapter }) {
           ...duplicatedQuestion,
           chapter_id: selectedChapter.id,
           is_practice: true,
+          published: false, // Create as draft/unpublished
         }),
       });
 
       if (response.ok) {
-        setSuccessMessage("Question duplicated successfully!");
+        setSuccessMessage("Question duplicated as draft - ready to publish!");
         setTimeout(() => setSuccessMessage(""), 3000);
         await loadPracticeQuestions();
       } else {
@@ -1026,7 +1093,7 @@ function CourseManager({ course, onBack, onSelectChapter }) {
   };
 
   const discardAllDrafts = async () => {
-    const draftQuestions = practiceQuestions.filter((q) => q.draft_of); // Only drafts
+    const draftQuestions = practiceQuestions.filter((q) => !q.published); // Only unpublished
 
     if (draftQuestions.length === 0) return;
 
@@ -1039,20 +1106,15 @@ function CourseManager({ course, onBack, onSelectChapter }) {
     }
 
     try {
-      // Call new bulk endpoint (prefer quiz_id resolution if we have one from any question)
-      const firstDraft = draftQuestions[0];
-      const quizId = firstDraft.quiz_id;
-      const response = await fetch(
-        `/api/admin/questions/drafts?quiz_id=${quizId}`,
-        { method: "DELETE" }
+      // Delete each unpublished question individually (handles both linked drafts and standalone unpublished questions)
+      const deleteResults = await Promise.all(
+        draftQuestions.map((q) =>
+          fetch(`/api/admin/questions/${q.id}`, { method: "DELETE" })
+        )
       );
 
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.error || "Bulk discard failed");
-      }
-
-      const result = await response.json();
+      const failedDeletes = deleteResults.filter((res) => !res.ok);
+      const successfulDeletes = deleteResults.filter((res) => res.ok);
 
       // Reload the questions to show updated state
       await loadPracticeQuestions();
@@ -1060,15 +1122,59 @@ function CourseManager({ course, onBack, onSelectChapter }) {
       setEditingQuestion(false);
       setHasUnsavedChanges(false);
 
-      setSuccessMessage(
-        `Discarded ${result.deleted || 0} draft question(s). Originals preserved.`
-      );
+      if (failedDeletes.length > 0) {
+        setSuccessMessage(
+          `Discarded ${successfulDeletes.length} draft question(s). Failed to delete ${failedDeletes.length}.`
+        );
+      } else {
+        setSuccessMessage(
+          `Discarded ${successfulDeletes.length} draft question(s).`
+        );
+      }
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (error) {
       console.error("Error discarding drafts:", error);
-      alert(
-        "Failed to discard drafts. Please refresh the page and try again."
-      );
+      alert("Failed to discard drafts. Please refresh the page and try again.");
+    }
+  };
+
+  // Discard a single practice question draft
+  const discardPracticeDraft = async (draftQuestion) => {
+    if (draftQuestion?.published) return; // not a draft
+
+    const isLinkedDraft = !!draftQuestion?.draft_of;
+    const confirmMessage = isLinkedDraft
+      ? "Discard this draft change and keep the published version?"
+      : "Discard this unpublished question permanently?";
+
+    if (!confirm(confirmMessage)) return;
+
+    try {
+      const res = await fetch(`/api/admin/questions/${draftQuestion.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to discard draft");
+        return;
+      }
+      await loadPracticeQuestions();
+      if (selectedQuestion?.id === draftQuestion.id) {
+        if (isLinkedDraft) {
+          // After deletion, reselect original if still in list
+          const original = practiceQuestions.find(
+            (q) => q.id === draftQuestion.draft_of
+          );
+          if (original) selectQuestion(original);
+          else setSelectedQuestion(null);
+        } else {
+          // For standalone drafts, just clear selection
+          setSelectedQuestion(null);
+        }
+      }
+    } catch (e) {
+      console.error("Discard practice draft error", e);
+      alert("Failed to discard draft");
     }
   };
 
@@ -1079,15 +1185,442 @@ function CourseManager({ course, onBack, onSelectChapter }) {
     }
   }, [activeTab, selectedChapter?.id]);
 
+  // Load quiz questions when quiz tab is selected
+  useEffect(() => {
+    if (activeTab === "quiz" && selectedChapter?.id) {
+      loadQuizQuestions();
+    }
+  }, [activeTab, selectedChapter?.id]);
+
+  // ---------------- Quiz Question Logic (mirrors practice) ----------------
+  const loadQuizQuestions = async () => {
+    if (!selectedChapter?.id) return;
+    setQuizQuestionsLoading(true);
+    try {
+      const response = await fetch(
+        `/api/admin/questions?chapter_id=${selectedChapter.id}&is_practice=false`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        const draftsByOriginal = new Map();
+        for (const q of data) {
+          if (q.draft_of) draftsByOriginal.set(q.draft_of, q);
+        }
+        const collapsed = [];
+        for (const q of data) {
+          if (q.draft_of) collapsed.push(q);
+          else if (!draftsByOriginal.has(q.id)) collapsed.push(q);
+        }
+        collapsed.sort((a, b) => (a.position || 0) - (b.position || 0));
+        setQuizQuestions(collapsed);
+        if (collapsed.length > 0) {
+          if (quizSelectedQuestion) {
+            if (quizSelectedQuestion.draft_of) {
+              setQuizSelectedQuestion(
+                collapsed.find((q) => q.id === quizSelectedQuestion.id) ||
+                  collapsed[0]
+              );
+            } else {
+              const draft = collapsed.find(
+                (q) => q.draft_of === quizSelectedQuestion.id
+              );
+              if (draft) setQuizSelectedQuestion(draft);
+              else {
+                const orig = collapsed.find(
+                  (q) => q.id === quizSelectedQuestion.id
+                );
+                setQuizSelectedQuestion(orig || collapsed[0]);
+              }
+            }
+          } else {
+            setQuizSelectedQuestion(collapsed[0]);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error loading quiz questions", e);
+    } finally {
+      setQuizQuestionsLoading(false);
+    }
+  };
+
+  const selectQuizQuestion = (question) => {
+    setQuizSelectedQuestion(question);
+    setQuizQuestionForm({
+      text: question.text || "",
+      type: question.type || "multiple_choice",
+      points: question.points || 2,
+      position: question.position || 1,
+      image_url: question.image_url || "",
+      published: question.published || false,
+      choices: question.choices || [
+        { text: "", is_correct: false },
+        { text: "", is_correct: false },
+        { text: "", is_correct: false },
+        { text: "", is_correct: false },
+      ],
+    });
+    setQuizEditingQuestion(false);
+    setQuizHasUnsavedChanges(false);
+  };
+
+  const startEditingQuizQuestion = (question) => {
+    if (quizSelectedQuestion?.id !== question.id) selectQuizQuestion(question);
+    setQuizEditingQuestion(true);
+    setQuizHasUnsavedChanges(false);
+  };
+
+  const startNewQuizQuestion = () => {
+    setQuizSelectedQuestion(null);
+    setQuizQuestionForm({
+      text: "",
+      type: "multiple_choice",
+      points: 2,
+      position: quizQuestions.length + 1,
+      image_url: "",
+      choices: [
+        { text: "", is_correct: false },
+        { text: "", is_correct: false },
+        { text: "", is_correct: false },
+        { text: "", is_correct: false },
+      ],
+    });
+    setQuizEditingQuestion(true);
+  };
+
+  const saveQuizQuestion = async () => {
+    const hasCorrect = quizQuestionForm.choices.some((c) => c.is_correct);
+    if (!hasCorrect) {
+      setQuizValidationMessage(
+        "Please select at least one correct answer before saving."
+      );
+      setTimeout(() => setQuizValidationMessage(""), 4000);
+      return;
+    }
+    try {
+      let response;
+      if (quizSelectedQuestion && !quizSelectedQuestion.draft_of) {
+        const draftData = {
+          ...quizQuestionForm,
+          chapter_id: selectedChapter.id,
+          is_practice: false,
+          published: false,
+          draft_of: quizSelectedQuestion.id,
+        };
+        const existingDraftResp = await fetch(
+          `/api/admin/questions?draft_of=${quizSelectedQuestion.id}`
+        );
+        if (existingDraftResp.ok) {
+          const drafts = await existingDraftResp.json();
+          if (drafts.length > 0) {
+            response = await fetch(`/api/admin/questions/${drafts[0].id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(draftData),
+            });
+          } else {
+            response = await fetch("/api/admin/questions", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(draftData),
+            });
+          }
+        } else {
+          response = await fetch("/api/admin/questions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(draftData),
+          });
+        }
+      } else if (quizSelectedQuestion && quizSelectedQuestion.draft_of) {
+        const draftData = {
+          ...quizQuestionForm,
+          chapter_id: selectedChapter.id,
+          is_practice: false,
+          published: false,
+          draft_of: quizSelectedQuestion.draft_of,
+        };
+        response = await fetch(
+          `/api/admin/questions/${quizSelectedQuestion.id}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(draftData),
+          }
+        );
+      } else {
+        const questionData = {
+          ...quizQuestionForm,
+          chapter_id: selectedChapter.id,
+          is_practice: false,
+          published: true,
+          draft_of: null,
+        };
+        response = await fetch("/api/admin/questions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(questionData),
+        });
+      }
+      if (response.ok) {
+        const saved = await response.json();
+        await loadQuizQuestions();
+        setQuizSelectedQuestion(saved);
+        setQuizEditingQuestion(false);
+        setQuizHasUnsavedChanges(false);
+        setQuizSuccessMessage("Question saved successfully");
+        setTimeout(() => setQuizSuccessMessage(""), 3000);
+      } else {
+        const err = await response.json();
+        setQuizSuccessMessage(
+          `Error: ${err.error || "Failed to save question"}`
+        );
+        setTimeout(() => setQuizSuccessMessage(""), 4000);
+      }
+    } catch (e) {
+      console.error("Error saving quiz question", e);
+      setQuizSuccessMessage("Failed to save question");
+      setTimeout(() => setQuizSuccessMessage(""), 4000);
+    }
+  };
+
+  const toggleQuizQuestionPublish = async (question) => {
+    try {
+      const response = await fetch(
+        `/api/admin/questions/${question.id}/publish`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ published: !question.published }),
+        }
+      );
+      if (response.ok) {
+        setQuizSuccessMessage(
+          `Question ${
+            !question.published ? "published" : "unpublished"
+          } successfully!`
+        );
+        setTimeout(() => setQuizSuccessMessage(""), 3000);
+        await loadQuizQuestions();
+      } else {
+        const err = await response.json();
+        setQuizSuccessMessage(
+          `Error: ${err.error || "Failed to update question"}`
+        );
+        setTimeout(() => setQuizSuccessMessage(""), 4000);
+      }
+    } catch (e) {
+      console.error("Toggle publish quiz question error", e);
+      setQuizSuccessMessage("Failed to update question");
+      setTimeout(() => setQuizSuccessMessage(""), 4000);
+    }
+  };
+
+  const publishAllQuizDrafts = async () => {
+    const drafts = quizQuestions.filter((q) => !q.published);
+    if (drafts.length === 0) {
+      setQuizValidationMessage("No draft questions to publish.");
+      setTimeout(() => setQuizValidationMessage(""), 3000);
+      return;
+    }
+    try {
+      const results = await Promise.all(
+        drafts.map((q) =>
+          fetch(`/api/admin/questions/${q.id}/publish`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ published: true }),
+          })
+        )
+      );
+      const ok = results.filter((r) => r.ok).length;
+      setQuizSuccessMessage(
+        `Published ${ok}/${results.length} draft questions.`
+      );
+      setTimeout(() => setQuizSuccessMessage(""), 4000);
+      await loadQuizQuestions();
+    } catch (e) {
+      console.error("Publish quiz drafts error", e);
+      setQuizSuccessMessage("Failed to publish drafts");
+      setTimeout(() => setQuizSuccessMessage(""), 4000);
+    }
+  };
+
+  const discardAllQuizDrafts = async () => {
+    const drafts = quizQuestions.filter((q) => !q.published);
+    if (drafts.length === 0) return;
+    if (
+      !confirm(
+        `Discard all ${drafts.length} draft change${
+          drafts.length === 1 ? "" : "s"
+        }?`
+      )
+    )
+      return;
+    try {
+      // Delete each unpublished question individually (handles both linked drafts and standalone unpublished questions)
+      const deleteResults = await Promise.all(
+        drafts.map((q) =>
+          fetch(`/api/admin/questions/${q.id}`, { method: "DELETE" })
+        )
+      );
+
+      const failedDeletes = deleteResults.filter((res) => !res.ok);
+      const successfulDeletes = deleteResults.filter((res) => res.ok);
+
+      await loadQuizQuestions();
+      setQuizSelectedQuestion(null);
+      setQuizEditingQuestion(false);
+      setQuizHasUnsavedChanges(false);
+
+      if (failedDeletes.length > 0) {
+        setQuizSuccessMessage(
+          `Discarded ${successfulDeletes.length} draft question(s). Failed to delete ${failedDeletes.length}.`
+        );
+      } else {
+        setQuizSuccessMessage(
+          `Discarded ${successfulDeletes.length} draft question(s).`
+        );
+      }
+      setTimeout(() => setQuizSuccessMessage(""), 3000);
+    } catch (e) {
+      console.error("Discard quiz drafts error", e);
+      alert("Failed to discard drafts");
+    }
+  };
+
+  // Discard single quiz question draft
+  const discardQuizDraft = async (draftQuestion) => {
+    if (draftQuestion?.published) return; // not a draft
+
+    const isLinkedDraft = !!draftQuestion?.draft_of;
+    const confirmMessage = isLinkedDraft
+      ? "Discard this draft change and keep the published version?"
+      : "Discard this unpublished question permanently?";
+
+    if (!confirm(confirmMessage)) return;
+
+    try {
+      const res = await fetch(`/api/admin/questions/${draftQuestion.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to discard draft");
+        return;
+      }
+      await loadQuizQuestions();
+      if (quizSelectedQuestion?.id === draftQuestion.id) {
+        if (isLinkedDraft) {
+          const original = quizQuestions.find(
+            (q) => q.id === draftQuestion.draft_of
+          );
+          if (original) selectQuizQuestion(original);
+          else setQuizSelectedQuestion(null);
+        } else {
+          // For standalone drafts, just clear selection
+          setQuizSelectedQuestion(null);
+        }
+      }
+    } catch (e) {
+      console.error("Discard quiz draft error", e);
+      alert("Failed to discard draft");
+    }
+  };
+
+  const duplicateQuizQuestion = async (question) => {
+    const dup = {
+      ...question,
+      text: `${question.text} (Copy)`,
+      position: quizQuestions.length + 1,
+      choices: question.choices?.map((c) => ({ ...c })) || [
+        { text: "", is_correct: false },
+        { text: "", is_correct: false },
+        { text: "", is_correct: false },
+        { text: "", is_correct: false },
+      ],
+    };
+    delete dup.id;
+    try {
+      const resp = await fetch("/api/admin/questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...dup,
+          chapter_id: selectedChapter.id,
+          is_practice: false,
+          published: false,
+        }),
+      });
+      if (resp.ok) {
+        setQuizSuccessMessage(
+          "Question duplicated as draft - ready to publish!"
+        );
+        setTimeout(() => setQuizSuccessMessage(""), 3000);
+        await loadQuizQuestions();
+      } else {
+        const err = await resp.json();
+        setQuizSuccessMessage(`Error: ${err.error || "Failed to duplicate"}`);
+        setTimeout(() => setQuizSuccessMessage(""), 4000);
+      }
+    } catch (e) {
+      console.error("Duplicate quiz question error", e);
+      setQuizSuccessMessage("Failed to duplicate");
+      setTimeout(() => setQuizSuccessMessage(""), 4000);
+    }
+  };
+
+  const deleteQuizQuestion = async (question) => {
+    if (!confirm(`Delete "${question.text}"?`)) return;
+    try {
+      const resp = await fetch(`/api/admin/questions/${question.id}`, {
+        method: "DELETE",
+      });
+      if (resp.ok) {
+        await loadQuizQuestions();
+        if (quizSelectedQuestion?.id === question.id) {
+          const remaining = quizQuestions.filter((q) => q.id !== question.id);
+          if (remaining.length > 0) setQuizSelectedQuestion(remaining[0]);
+          else {
+            setQuizSelectedQuestion(null);
+            startNewQuizQuestion();
+          }
+        }
+        setQuizSuccessMessage("Question deleted");
+        setTimeout(() => setQuizSuccessMessage(""), 3000);
+      } else {
+        const err = await resp.json();
+        setQuizSuccessMessage(`Error: ${err.error || "Failed to delete"}`);
+        setTimeout(() => setQuizSuccessMessage(""), 4000);
+      }
+    } catch (e) {
+      console.error("Delete quiz question error", e);
+      setQuizSuccessMessage("Failed to delete question");
+      setTimeout(() => setQuizSuccessMessage(""), 4000);
+    }
+  };
+
+  const cancelQuizQuestionEdit = () => {
+    if (quizSelectedQuestion) {
+      selectQuizQuestion(quizSelectedQuestion);
+    } else if (quizQuestions.length > 0) {
+      selectQuizQuestion(quizQuestions[0]);
+    }
+    setQuizEditingQuestion(false);
+    setQuizHasUnsavedChanges(false);
+  };
+
   return (
     <div className={styles.courseManager}>
       <div
         className={`${styles.courseLayout} ${
-          activeTab === "practice" ? styles.practiceMode : ""
+          activeTab === "practice" || activeTab === "quiz"
+            ? styles.practiceMode
+            : ""
         }`}
       >
         {/* Chapters Sidebar - Hidden in Practice Tab */}
-        {activeTab !== "practice" && (
+        {activeTab !== "practice" && activeTab !== "quiz" && (
           <div className={styles.chaptersSidebar}>
             <div className={styles.chaptersHeader}>
               <h3>Chapters</h3>
@@ -1122,7 +1655,7 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                 </div>
               ) : (
                 (() => {
-                  const draftCount = chapters.filter(c => c.draft_of).length;
+                  const draftCount = chapters.filter((c) => c.draft_of).length;
                   return (
                     <>
                       {draftCount > 0 && (
@@ -1130,70 +1663,137 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                           <button
                             className={styles.bulkPublishBtn}
                             disabled={bulkBusy}
-                            onClick={(e) => { e.stopPropagation(); bulkPublishChapterDrafts(); }}
-                            title={bulkBusy ? 'Working...' : 'Publish all chapter draft changes'}
-                          >{bulkBusy ? 'Publishing…' : `Publish Draft Changes (${draftCount})`}</button>
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              bulkPublishChapterDrafts();
+                            }}
+                            title={
+                              bulkBusy
+                                ? "Working..."
+                                : "Publish all chapter draft changes"
+                            }
+                          >
+                            {bulkBusy
+                              ? "Publishing…"
+                              : `Publish Draft Changes (${draftCount})`}
+                          </button>
                           <button
                             className={styles.bulkDiscardBtn}
                             disabled={bulkBusy}
-                            onClick={(e) => { e.stopPropagation(); bulkDiscardChapterDrafts(); }}
-                            title={bulkBusy ? 'Working...' : 'Discard all chapter draft changes'}
-                          >{bulkBusy ? 'Discarding…' : `Discard Draft Changes (${draftCount})`}</button>
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              bulkDiscardChapterDrafts();
+                            }}
+                            title={
+                              bulkBusy
+                                ? "Working..."
+                                : "Discard all chapter draft changes"
+                            }
+                          >
+                            {bulkBusy
+                              ? "Discarding…"
+                              : `Discard Draft Changes (${draftCount})`}
+                          </button>
                         </div>
                       )}
-                      {chapters.map(chapter => {
+                      {chapters.map((chapter) => {
                         const isDraft = !!chapter.draft_of;
-                        const isUnpublishedOriginal = !chapter.published && !isDraft;
+                        const isUnpublishedOriginal =
+                          !chapter.published && !isDraft;
                         return (
                           <div
                             key={chapter.id}
-                            className={`${styles.chapterItem} ${selectedChapter?.id === chapter.id ? styles.active : ''}`}
+                            className={`${styles.chapterItem} ${
+                              selectedChapter?.id === chapter.id
+                                ? styles.active
+                                : ""
+                            }`}
                             onClick={() => selectChapter(chapter)}
                           >
                             <div className={styles.chapterTop}>
                               <div className={styles.chapterTitleLine}>
-                                <span className={styles.chapterLabel}>Chapter {chapter.position}:</span>
-                                <span className={styles.chapterTitleText}>{chapter.title}</span>
+                                <span className={styles.chapterLabel}>
+                                  Chapter {chapter.position}:
+                                </span>
+                                <span className={styles.chapterTitleText}>
+                                  {chapter.title}
+                                </span>
                               </div>
                               <div className={styles.chapterButtons}>
                                 <button
                                   className={styles.editTinyBtn}
-                                  onClick={(e) => { e.stopPropagation(); selectChapter(chapter); startEditChapter(); }}
-                                >Edit</button>
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    selectChapter(chapter);
+                                    startEditChapter();
+                                  }}
+                                >
+                                  Edit
+                                </button>
                                 {isDraft && (
                                   <>
                                     <button
                                       className={styles.publishTinyBtn}
-                                      onClick={(e) => { e.stopPropagation(); publishChapter(chapter); }}
-                                    >Publish</button>
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        publishChapter(chapter);
+                                      }}
+                                    >
+                                      Publish
+                                    </button>
                                     <button
                                       className={styles.discardTinyBtn}
-                                      onClick={(e) => { e.stopPropagation(); discardChapterDraft(chapter); }}
-                                    >Discard</button>
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        discardChapterDraft(chapter);
+                                      }}
+                                    >
+                                      Discard
+                                    </button>
                                   </>
                                 )}
                                 {isUnpublishedOriginal && (
                                   <button
                                     className={styles.publishTinyBtn}
-                                    onClick={(e) => { e.stopPropagation(); publishChapter(chapter); }}
-                                  >Publish</button>
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      publishChapter(chapter);
+                                    }}
+                                  >
+                                    Publish
+                                  </button>
                                 )}
                                 <button
                                   className={styles.deleteTinyBtn}
                                   title="Delete chapter"
-                                  onClick={(e) => { e.stopPropagation(); deleteChapter(chapter); }}
-                                >×</button>
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteChapter(chapter);
+                                  }}
+                                >
+                                  ×
+                                </button>
                               </div>
                             </div>
                             <div className={styles.chapterMetaLine}>
-                              <span>{chapter.video_url ? 'Video' : 'No video'}</span>
+                              <span>
+                                {chapter.video_url ? "Video" : "No video"}
+                              </span>
                               <span>• Practice</span>
                               <span>• Quiz</span>
                             </div>
                             {(isDraft || isUnpublishedOriginal) && (
                               <div className={styles.chapterStatusLine}>
-                                {isDraft && <span className={styles.statusDraft}>Draft changes pending publish</span>}
-                                {isUnpublishedOriginal && <span className={styles.statusUnpublished}>Unpublished chapter</span>}
+                                {isDraft && (
+                                  <span className={styles.statusDraft}>
+                                    Draft changes pending publish
+                                  </span>
+                                )}
+                                {isUnpublishedOriginal && (
+                                  <span className={styles.statusUnpublished}>
+                                    Unpublished chapter
+                                  </span>
+                                )}
                               </div>
                             )}
                           </div>
@@ -1224,7 +1824,10 @@ function CourseManager({ course, onBack, onSelectChapter }) {
               }`}
               onClick={() => setActiveTab("practice")}
             >
-              Practice
+              Practice{" "}
+              <span className={styles.questionCount}>
+                ({practiceQuestions.length})
+              </span>
             </button>
             <button
               className={`${styles.tab} ${
@@ -1232,7 +1835,10 @@ function CourseManager({ course, onBack, onSelectChapter }) {
               }`}
               onClick={() => setActiveTab("quiz")}
             >
-              Quiz
+              Quiz{" "}
+              <span className={styles.questionCount}>
+                ({quizQuestions.length})
+              </span>
             </button>
             <button
               className={`${styles.tab} ${
@@ -1245,7 +1851,11 @@ function CourseManager({ course, onBack, onSelectChapter }) {
           </div>
 
           {activeTab === "details" && (
-            <div className={`${styles.detailsForm} ${editingChapter ? styles.editMode : styles.viewMode}`}>
+            <div
+              className={`${styles.detailsForm} ${
+                editingChapter ? styles.editMode : styles.viewMode
+              }`}
+            >
               <div className={styles.formGroup}>
                 <label>Chapter title</label>
                 <input
@@ -1276,7 +1886,9 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                   placeholder="One or two lines to describe the chapter."
                 />
                 {chapterErrors.description && (
-                  <div className={styles.fieldError}>{chapterErrors.description}</div>
+                  <div className={styles.fieldError}>
+                    {chapterErrors.description}
+                  </div>
                 )}
               </div>
 
@@ -1295,7 +1907,9 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                   placeholder="https://youtube.com/watch?v=..."
                 />
                 {chapterErrors.video_url && (
-                  <div className={styles.fieldError}>{chapterErrors.video_url}</div>
+                  <div className={styles.fieldError}>
+                    {chapterErrors.video_url}
+                  </div>
                 )}
               </div>
 
@@ -1314,33 +1928,36 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                     }
                   />
                   {chapterErrors.position && (
-                    <div className={styles.fieldError}>{chapterErrors.position}</div>
+                    <div className={styles.fieldError}>
+                      {chapterErrors.position}
+                    </div>
                   )}
                 </div>
               </div>
               {!editingChapter && selectedChapter && (
                 <div className={styles.inlineEditBar}>
-                  <button
-                    className={styles.editBtn}
-                    onClick={startEditChapter}
-                  >
+                  <button className={styles.editBtn} onClick={startEditChapter}>
                     Edit Chapter
                   </button>
                 </div>
               )}
               {editingChapter && (
                 <div className={styles.inlineEditBar}>
-                  <button
-                    className={styles.cancelBtn}
-                    onClick={cancelEdit}
-                  >
+                  <button className={styles.cancelBtn} onClick={cancelEdit}>
                     Cancel
                   </button>
                   <button
                     className={styles.saveBtn}
                     onClick={saveChapter}
-                    disabled={!editingChapter || (selectedChapter && !hasChapterUnsavedChanges)}
-                    title={selectedChapter && !hasChapterUnsavedChanges ? "No changes to save" : ""}
+                    disabled={
+                      !editingChapter ||
+                      (selectedChapter && !hasChapterUnsavedChanges)
+                    }
+                    title={
+                      selectedChapter && !hasChapterUnsavedChanges
+                        ? "No changes to save"
+                        : ""
+                    }
                   >
                     Save Changes
                   </button>
@@ -1364,8 +1981,7 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                 <div className={styles.questionsHeader}>
                   <h3>Practice Quiz</h3>
                   <div className={styles.questionHeaderActions}>
-                    {practiceQuestions.filter((q) => q.draft_of).length >
-                      1 && (
+                    {practiceQuestions.filter((q) => q.draft_of).length > 1 && (
                       <button
                         className={styles.publishAllBtn}
                         onClick={publishAllDrafts}
@@ -1388,14 +2004,14 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                 </div>
 
                 {/* Draft Changes Controls */}
-                {practiceQuestions.filter((q) => q.draft_of).length > 0 && (
+                {practiceQuestions.filter((q) => !q.published).length > 1 && (
                   <div className={styles.sessionActionsContainer}>
                     <button
                       className={styles.discardAllBtn}
                       onClick={discardAllDrafts}
                     >
-                      �️ Discard All Draft Changes (
-                      {practiceQuestions.filter((q) => q.draft_of).length})
+                      🗑️ Discard All Draft Changes (
+                      {practiceQuestions.filter((q) => !q.published).length})
                     </button>
                   </div>
                 )}
@@ -1446,7 +2062,7 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                               <span className={styles.questionPoints}>
                                 • {question.points} pts
                               </span>
-                              {question.draft_of && (
+                              {!question.published && (
                                 <span className={styles.draftTag}>DRAFT</span>
                               )}
                               {(selectedQuestion?.id === question.id
@@ -1532,6 +2148,17 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                               >
                                 {question.published ? "Unpublish" : "Publish"}
                               </button>
+                              {!question.published && (
+                                <button
+                                  className={styles.discardTinyBtn}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    discardPracticeDraft(question);
+                                  }}
+                                >
+                                  Discard
+                                </button>
+                              )}
                               {/* <button className={styles.moveBtn}>Move ↑↓</button> */}
                             </div>
                           </div>
@@ -1803,7 +2430,14 @@ function CourseManager({ course, onBack, onSelectChapter }) {
 
                 {editingQuestion && (
                   <div className={styles.questionFormActions}>
-                    <button className={styles.deleteQuestionBtn}>Delete</button>
+                    <button
+                      className={styles.deleteQuestionBtn}
+                      onClick={() => {
+                        if (selectedQuestion) deleteQuestion(selectedQuestion);
+                      }}
+                    >
+                      Delete
+                    </button>
                     <button
                       className={styles.saveDraftBtn}
                       onClick={cancelQuestionEdit}
@@ -1813,8 +2447,15 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                     <button
                       className={styles.saveQuestionBtn}
                       onClick={saveQuestion}
-                      disabled={!questionForm.text.trim() || (selectedQuestion && !hasUnsavedChanges)}
-                      title={selectedQuestion && !hasUnsavedChanges ? "No changes to save" : ""}
+                      disabled={
+                        !questionForm.text.trim() ||
+                        (selectedQuestion && !hasUnsavedChanges)
+                      }
+                      title={
+                        selectedQuestion && !hasUnsavedChanges
+                          ? "No changes to save"
+                          : ""
+                      }
                     >
                       {editingQuestion
                         ? selectedQuestion
@@ -1830,15 +2471,506 @@ function CourseManager({ course, onBack, onSelectChapter }) {
             </div>
           )}
 
-          {/* Draft Warning */}
-          {selectedChapter && !selectedChapter.published && !selectedChapter.draft_of && (
-            <div className={styles.draftWarning}>
-              ⚠️ This chapter is saved as a draft and is not visible to students yet. Click "Publish Chapter" to make it live.
+          {activeTab === "quiz" && (
+            <div className={styles.practiceContent}>
+              {quizSuccessMessage && (
+                <div className={styles.successMessage}>
+                  {quizSuccessMessage}
+                </div>
+              )}
+              <div className={styles.questionsSidebar}>
+                <div className={styles.questionsHeader}>
+                  <h3>Chapter Quiz</h3>
+                  <div className={styles.questionHeaderActions}>
+                    {quizQuestions.filter((q) => !q.published).length > 1 && (
+                      <button
+                        className={styles.publishAllBtn}
+                        onClick={publishAllQuizDrafts}
+                        title={`Publish ${
+                          quizQuestions.filter((q) => !q.published).length
+                        } draft questions`}
+                      >
+                        Publish All Drafts (
+                        {quizQuestions.filter((q) => !q.published).length})
+                      </button>
+                    )}
+                    <button
+                      className={styles.addQuestionBtn}
+                      onClick={startNewQuizQuestion}
+                    >
+                      + Add Question
+                    </button>
+                  </div>
+                </div>
+                {quizQuestions.filter((q) => !q.published).length > 1 && (
+                  <div className={styles.sessionActionsContainer}>
+                    <button
+                      className={styles.discardAllBtn}
+                      onClick={discardAllQuizDrafts}
+                    >
+                      🗑️ Discard All Draft Changes (
+                      {quizQuestions.filter((q) => !q.published).length})
+                    </button>
+                  </div>
+                )}
+                <div className={styles.questionsList}>
+                  {quizQuestionsLoading ? (
+                    <div
+                      style={{
+                        padding: "20px",
+                        textAlign: "center",
+                        color: "#8b949e",
+                      }}
+                    >
+                      Loading questions...
+                    </div>
+                  ) : quizQuestions.length === 0 ? (
+                    <div
+                      style={{
+                        padding: "20px",
+                        textAlign: "center",
+                        color: "#8b949e",
+                      }}
+                    >
+                      No quiz questions yet. Click "+ Add Question" to get
+                      started.
+                    </div>
+                  ) : (
+                    [...quizQuestions]
+                      .sort((a, b) => (a.position || 0) - (b.position || 0))
+                      .map((question, index) => (
+                        <div
+                          key={question.id}
+                          className={`${styles.questionItem} ${
+                            quizSelectedQuestion?.id === question.id
+                              ? styles.active
+                              : ""
+                          }`}
+                          onClick={() => selectQuizQuestion(question)}
+                        >
+                          <div className={styles.questionContent}>
+                            <div className={styles.questionHeader}>
+                              <span className={styles.questionNumber}>
+                                Q{index + 1}
+                              </span>
+                              <span className={styles.questionType}>
+                                {question.type?.toUpperCase()}
+                              </span>
+                              <span className={styles.questionPoints}>
+                                • {question.points} pts
+                              </span>
+                              {!question.published && (
+                                <span className={styles.draftTag}>DRAFT</span>
+                              )}
+                              {(quizSelectedQuestion?.id === question.id
+                                ? quizQuestionForm.image_url
+                                : question.image_url) && (
+                                <span
+                                  className={styles.imageTag}
+                                  title="Has image"
+                                >
+                                  IMG
+                                </span>
+                              )}
+                              {quizHasUnsavedChanges &&
+                                quizSelectedQuestion?.id === question.id && (
+                                  <span
+                                    className={styles.modifiedTag}
+                                    title="Has unsaved changes"
+                                  >
+                                    UNSAVED
+                                  </span>
+                                )}
+                            </div>
+                            <div className={styles.questionText}>
+                              {question.text && question.text.length > 50
+                                ? `${question.text.substring(0, 50)}...`
+                                : question.text || "Prompt preview..."}
+                            </div>
+                            <div className={styles.pointsDisplay}>
+                              Points: {question.points}
+                            </div>
+                            <div className={styles.questionButtons}>
+                              <button
+                                className={styles.duplicateBtn}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  duplicateQuizQuestion(question);
+                                }}
+                              >
+                                Duplicate
+                              </button>
+                              <button
+                                className={`${styles.editBtn} ${
+                                  quizEditingQuestion &&
+                                  quizSelectedQuestion?.id === question.id
+                                    ? styles.cancelBtn
+                                    : ""
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (
+                                    quizEditingQuestion &&
+                                    quizSelectedQuestion?.id === question.id
+                                  ) {
+                                    setQuizEditingQuestion(false);
+                                    setQuizHasUnsavedChanges(false);
+                                    if (quizSelectedQuestion)
+                                      selectQuizQuestion(quizSelectedQuestion);
+                                  } else {
+                                    startEditingQuizQuestion(question);
+                                  }
+                                }}
+                              >
+                                {quizEditingQuestion &&
+                                quizSelectedQuestion?.id === question.id
+                                  ? "Cancel"
+                                  : "Edit"}
+                              </button>
+                              <button
+                                className={`${styles.publishBtn} ${
+                                  question.published
+                                    ? styles.unpublish
+                                    : styles.publish
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleQuizQuestionPublish(question);
+                                }}
+                              >
+                                {question.published ? "Unpublish" : "Publish"}
+                              </button>
+                              {!question.published && (
+                                <button
+                                  className={styles.discardTinyBtn}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    discardQuizDraft(question);
+                                  }}
+                                >
+                                  Discard
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <div className={styles.questionMenu}>
+                            <button className={styles.moreBtn}>⋯</button>
+                          </div>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </div>
+              <div
+                className={`${styles.questionForm} ${
+                  quizEditingQuestion ? styles.editing : ""
+                }`}
+              >
+                <div className={styles.formRow}>
+                  <div className={styles.formGroup}>
+                    <label>Type</label>
+                    <select
+                      value={quizQuestionForm.type}
+                      disabled={!quizEditingQuestion}
+                      onChange={(e) => {
+                        if (!quizEditingQuestion) return;
+                        const newType = e.target.value;
+                        const newChoices =
+                          newType === "true_false"
+                            ? [
+                                {
+                                  text: "True",
+                                  is_correct: false,
+                                  image_url: "",
+                                },
+                                {
+                                  text: "False",
+                                  is_correct: false,
+                                  image_url: "",
+                                },
+                              ]
+                            : [
+                                { text: "", is_correct: false, image_url: "" },
+                                { text: "", is_correct: false, image_url: "" },
+                                { text: "", is_correct: false, image_url: "" },
+                                { text: "", is_correct: false, image_url: "" },
+                              ];
+                        setQuizQuestionForm({
+                          ...quizQuestionForm,
+                          type: newType,
+                          choices: newChoices,
+                        });
+                        setQuizHasUnsavedChanges(true);
+                      }}
+                    >
+                      <option value="multiple_choice">Multiple Choice</option>
+                      <option value="true_false">True/False</option>
+                    </select>
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>Points</label>
+                    <input
+                      type="number"
+                      value={quizQuestionForm.points}
+                      readOnly={!quizEditingQuestion}
+                      disabled={!quizEditingQuestion}
+                      onChange={(e) => {
+                        if (!quizEditingQuestion) return;
+                        setQuizQuestionForm({
+                          ...quizQuestionForm,
+                          points: parseInt(e.target.value),
+                        });
+                        setQuizHasUnsavedChanges(true);
+                      }}
+                      min="1"
+                      max="10"
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>Position</label>
+                    <input
+                      type="number"
+                      value={quizQuestionForm.position}
+                      readOnly={!quizEditingQuestion}
+                      disabled={!quizEditingQuestion}
+                      onChange={(e) => {
+                        if (!quizEditingQuestion) return;
+                        setQuizQuestionForm({
+                          ...quizQuestionForm,
+                          position: parseInt(e.target.value),
+                        });
+                        setQuizHasUnsavedChanges(true);
+                      }}
+                      min="1"
+                    />
+                  </div>
+                </div>
+                <div className={styles.formGroup}>
+                  <label>Prompt</label>
+                  <textarea
+                    value={quizQuestionForm.text}
+                    readOnly={!quizEditingQuestion}
+                    disabled={!quizEditingQuestion}
+                    onChange={(e) => {
+                      if (!quizEditingQuestion) return;
+                      setQuizQuestionForm({
+                        ...quizQuestionForm,
+                        text: e.target.value,
+                      });
+                      setQuizHasUnsavedChanges(true);
+                    }}
+                    placeholder={
+                      quizEditingQuestion
+                        ? "Enter your question here..."
+                        : "Question text (read-only)"
+                    }
+                    rows="3"
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label>Question Image (optional)</label>
+                  <ImageUpload
+                    currentImageUrl={quizQuestionForm.image_url || ""}
+                    onImageChange={(url) => {
+                      if (!quizEditingQuestion) return;
+                      setQuizQuestionForm({
+                        ...quizQuestionForm,
+                        image_url: url,
+                      });
+                      setQuizHasUnsavedChanges(true);
+                    }}
+                    folder="questions"
+                    prefix="quiz_question"
+                    placeholder={
+                      quizEditingQuestion
+                        ? "Drop image here or click to upload"
+                        : "Question image (view only)"
+                    }
+                    disabled={!quizEditingQuestion}
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label>
+                    {quizQuestionForm.type === "true_false"
+                      ? "Select correct answer"
+                      : "Answer choices"}
+                  </label>
+                  {quizValidationMessage && (
+                    <div
+                      className={styles.validationMessage}
+                      style={{ marginTop: "8px", marginBottom: "12px" }}
+                    >
+                      {quizValidationMessage}
+                    </div>
+                  )}
+                  <div className={styles.choicesGrid}>
+                    {quizQuestionForm.choices.map((choice, index) => (
+                      <div key={index} className={styles.choiceItem}>
+                        <div className={styles.choiceHeader}>
+                          <span className={styles.choiceLabel}>
+                            {String.fromCharCode(65 + index)})
+                          </span>
+                          <button
+                            className={`${styles.correctBtn} ${
+                              choice.is_correct ? styles.correct : ""
+                            }`}
+                            onClick={() => {
+                              const newChoices = [...quizQuestionForm.choices];
+                              if (quizQuestionForm.type === "true_false") {
+                                newChoices.forEach(
+                                  (c, i) => (c.is_correct = i === index)
+                                );
+                              } else {
+                                newChoices[index] = {
+                                  ...choice,
+                                  is_correct: !choice.is_correct,
+                                };
+                              }
+                              setQuizQuestionForm({
+                                ...quizQuestionForm,
+                                choices: newChoices,
+                              });
+                              setQuizHasUnsavedChanges(true);
+                            }}
+                          >
+                            {choice.is_correct ? "✓ Correct" : "Mark correct"}
+                          </button>
+                        </div>
+                        <div className={styles.choiceContent}>
+                          <div className={styles.choiceText}>
+                            <label>Answer Text</label>
+                            <input
+                              type="text"
+                              value={choice.text}
+                              placeholder={
+                                quizEditingQuestion
+                                  ? `Choice ${String.fromCharCode(
+                                      65 + index
+                                    )} text`
+                                  : "Choice text (read-only)"
+                              }
+                              readOnly={
+                                quizQuestionForm.type === "true_false" ||
+                                !quizEditingQuestion
+                              }
+                              disabled={!quizEditingQuestion}
+                              onChange={(e) => {
+                                if (
+                                  quizQuestionForm.type === "true_false" ||
+                                  !quizEditingQuestion
+                                )
+                                  return;
+                                const newChoices = [
+                                  ...quizQuestionForm.choices,
+                                ];
+                                newChoices[index] = {
+                                  ...choice,
+                                  text: e.target.value,
+                                };
+                                setQuizQuestionForm({
+                                  ...quizQuestionForm,
+                                  choices: newChoices,
+                                });
+                                setQuizHasUnsavedChanges(true);
+                              }}
+                            />
+                          </div>
+                          {quizQuestionForm.type !== "true_false" && (
+                            <div className={styles.choiceImage}>
+                              <label>Choice Image (optional)</label>
+                              <ImageUpload
+                                currentImageUrl={choice.image_url || ""}
+                                onImageChange={(url) => {
+                                  if (!quizEditingQuestion) return;
+                                  const newChoices = [
+                                    ...quizQuestionForm.choices,
+                                  ];
+                                  newChoices[index] = {
+                                    ...choice,
+                                    image_url: url,
+                                  };
+                                  setQuizQuestionForm({
+                                    ...quizQuestionForm,
+                                    choices: newChoices,
+                                  });
+                                  setQuizHasUnsavedChanges(true);
+                                }}
+                                folder="choices"
+                                prefix={`quiz_choice_${String.fromCharCode(
+                                  65 + index
+                                )}`}
+                                placeholder={
+                                  quizEditingQuestion
+                                    ? "Add image for this choice"
+                                    : "Choice image (view only)"
+                                }
+                                className="compact"
+                                disabled={!quizEditingQuestion}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {quizEditingQuestion && (
+                  <div className={styles.questionFormActions}>
+                    <button
+                      className={styles.deleteQuestionBtn}
+                      onClick={() => {
+                        if (quizSelectedQuestion)
+                          deleteQuizQuestion(quizSelectedQuestion);
+                      }}
+                    >
+                      Delete
+                    </button>
+                    <button
+                      className={styles.saveDraftBtn}
+                      onClick={cancelQuizQuestionEdit}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className={styles.saveQuestionBtn}
+                      onClick={saveQuizQuestion}
+                      disabled={
+                        !quizQuestionForm.text.trim() ||
+                        (quizSelectedQuestion && !quizHasUnsavedChanges)
+                      }
+                      title={
+                        quizSelectedQuestion && !quizHasUnsavedChanges
+                          ? "No changes to save"
+                          : ""
+                      }
+                    >
+                      {quizEditingQuestion
+                        ? quizSelectedQuestion
+                          ? quizHasUnsavedChanges
+                            ? "Save Changes"
+                            : "Save Question"
+                          : "Save Question"
+                        : "Save Question"}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
+
+          {/* Draft Warning */}
+          {selectedChapter &&
+            !selectedChapter.published &&
+            !selectedChapter.draft_of && (
+              <div className={styles.draftWarning}>
+                ⚠️ This chapter is saved as a draft and is not visible to
+                students yet. Click "Publish Chapter" to make it live.
+              </div>
+            )}
           {selectedChapter && selectedChapter.draft_of && (
             <div className={styles.draftWarning}>
-              ✏️ You are viewing draft changes for a published chapter. Publish to apply these changes or Discard to revert.
+              ✏️ You are viewing draft changes for a published chapter. Publish
+              to apply these changes or Discard to revert.
             </div>
           )}
 

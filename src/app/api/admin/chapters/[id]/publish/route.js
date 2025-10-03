@@ -16,7 +16,9 @@ export async function PATCH(request, { params }) {
     // Fetch target (could be draft or original)
     const { data: target, error: fetchErr } = await supabaseAdmin
       .from("chapters")
-      .select("id, draft_of, course_id, title, description, video_url, position, published")
+      .select(
+        "id, draft_of, course_id, title, description, video_url, position, published"
+      )
       .eq("id", id)
       .maybeSingle();
     if (fetchErr || !target) {
@@ -40,7 +42,10 @@ export async function PATCH(request, { params }) {
         })
         .eq("id", originalId);
       if (updErr) {
-        return new Response(JSON.stringify({ error: "Failed to promote draft" }), { status: 500 });
+        return new Response(
+          JSON.stringify({ error: "Failed to promote draft" }),
+          { status: 500 }
+        );
       }
       // Delete draft row
       await supabaseAdmin.from("chapters").delete().eq("id", target.id);
@@ -63,7 +68,10 @@ export async function PATCH(request, { params }) {
       .select()
       .maybeSingle();
     if (error) {
-      return new Response(JSON.stringify({ error: "Failed to update chapter" }), { status: 500 });
+      return new Response(
+        JSON.stringify({ error: "Failed to update chapter" }),
+        { status: 500 }
+      );
     }
     return new Response(JSON.stringify(updated), {
       status: 200,

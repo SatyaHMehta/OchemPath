@@ -50,7 +50,14 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json();
-  const { course_id, position, title, description, video_url, draft_of = null } = body;
+    const {
+      course_id,
+      position,
+      title,
+      description,
+      video_url,
+      draft_of = null,
+    } = body;
 
     if (!course_id || !title) {
       return new Response(

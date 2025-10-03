@@ -6,7 +6,9 @@ export async function PATCH(req) {
     const url = new URL(req.url);
     const courseId = url.searchParams.get("course_id");
     if (!courseId) {
-      return new Response(JSON.stringify({ error: "course_id required" }), { status: 400 });
+      return new Response(JSON.stringify({ error: "course_id required" }), {
+        status: 400,
+      });
     }
 
     // Fetch all drafts for course
@@ -24,10 +26,10 @@ export async function PATCH(req) {
         .from("chapters")
         .update({
           title: d.title,
-            description: d.description,
-            video_url: d.video_url,
-            position: d.position,
-            published: true,
+          description: d.description,
+          video_url: d.video_url,
+          position: d.position,
+          published: true,
         })
         .eq("id", d.draft_of);
       if (updErr) continue;
@@ -38,6 +40,8 @@ export async function PATCH(req) {
 
     return new Response(JSON.stringify({ promoted }), { status: 200 });
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
+    return new Response(JSON.stringify({ error: String(err) }), {
+      status: 500,
+    });
   }
 }

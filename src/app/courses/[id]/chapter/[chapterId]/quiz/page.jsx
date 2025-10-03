@@ -20,12 +20,21 @@ export default function QuizPage({ params }) {
     const load = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/chapters/${chapterId}/quizzes`);
-        if (!res.ok) {
-          setQuiz(null);
-          return;
+        // First try to fetch explicit chapter (non-practice) quizzes
+        let res = await fetch(
+          `/api/chapters/${chapterId}/quizzes?practice=false`
+        );
+        let data = [];
+        if (res.ok) {
+          data = await res.json();
         }
-        const data = await res.json();
+        // Fallback to any quiz if no chapter quiz found
+        if (!Array.isArray(data) || data.length === 0) {
+          res = await fetch(`/api/chapters/${chapterId}/quizzes`);
+          if (res.ok) {
+            data = await res.json();
+          }
+        }
         const q = Array.isArray(data) && data.length ? data[0] : null;
         setQuiz(q);
       } catch (e) {
@@ -136,17 +145,20 @@ export default function QuizPage({ params }) {
             {questions.map((q, idx) => (
               <li key={q.id} className={styles.questionCard} data-qid={q.id}>
                 <div className={styles.qIndex}>Question {idx + 1}</div>
-                {q.image && (
+                {q.image_url && (
                   <div className={styles.qImage}>
                     <img
-                      src={q.image}
+                      src={q.image_url}
                       alt={`question-${idx + 1}`}
                       role="button"
                       tabIndex={0}
-                      onClick={() => setZoomImage(q.image)}
+                      onClick={() => setZoomImage(q.image_url)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ")
-                          setZoomImage(q.image);
+                          setZoomImage(q.image_url);
+                      }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
                       }}
                     />
                   </div>
@@ -161,6 +173,7 @@ export default function QuizPage({ params }) {
                     if (chosen) cls.push(styles.optSelected);
                     if (isCorrect) cls.push(styles.optCorrect);
                     if (isWrong) cls.push(styles.optWrong);
+                    const choiceImg = c.image_url;
                     return (
                       <button
                         key={c.id}
@@ -169,9 +182,23 @@ export default function QuizPage({ params }) {
                         onClick={() => select(q.id, c.id)}
                       >
                         <span className={styles.optLabel}>
-                          {String.fromCharCode(65 + cIdx)})
+                          {String.fromCharCode(65 + cIdx)}) {c.text}
                         </span>
-                        <span className={styles.optText}>{c.text}</span>
+                        {choiceImg && (
+                          <div className={styles.optImage}>
+                            <img
+                              src={choiceImg}
+                              alt={`choice-${cIdx}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setZoomImage(choiceImg);
+                              }}
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                          </div>
+                        )}
                       </button>
                     );
                   })}

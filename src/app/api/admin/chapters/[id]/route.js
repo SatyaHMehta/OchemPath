@@ -55,7 +55,10 @@ export async function PUT(request, { params }) {
         .eq("id", id)
         .maybeSingle();
       if (origErr || !original) {
-        return new Response(JSON.stringify({ error: "Original chapter not found" }), { status: 404 });
+        return new Response(
+          JSON.stringify({ error: "Original chapter not found" }),
+          { status: 404 }
+        );
       }
 
       // Check if a draft already exists

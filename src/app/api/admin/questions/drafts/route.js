@@ -38,7 +38,8 @@ export async function DELETE(req) {
     let quizId = url.searchParams.get("quiz_id");
     const chapterId = url.searchParams.get("chapter_id");
     const isPracticeParam = url.searchParams.get("is_practice");
-    const isPractice = isPracticeParam === null ? true : isPracticeParam === "true";
+    const isPractice =
+      isPracticeParam === null ? true : isPracticeParam === "true";
 
     if (!quizId) {
       if (!chapterId) {

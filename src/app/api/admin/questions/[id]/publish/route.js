@@ -53,10 +53,7 @@ export async function PATCH(request, { params }) {
       .eq("id", id)
       .maybeSingle();
     if (fetchErr || !target) {
-      return Response.json(
-        { error: "Question not found" },
-        { status: 404 }
-      );
+      return Response.json({ error: "Question not found" }, { status: 404 });
     }
 
     // If this is a draft being published -> promote its content into original and delete draft
@@ -66,9 +63,7 @@ export async function PATCH(request, { params }) {
       // Fetch original to ensure it exists
       const { data: original, error: origErr } = await supabaseAdmin
         .from("questions")
-        .select(
-          "id, text, type, points, image, position, quiz_id, published"
-        )
+        .select("id, text, type, points, image, position, quiz_id, published")
         .eq("id", originalId)
         .maybeSingle();
       if (origErr || !original) {
@@ -141,13 +136,14 @@ export async function PATCH(request, { params }) {
       }
 
       // Return updated original (with new choices)
-      const { data: updatedOriginal, error: updatedFetchErr } = await supabaseAdmin
-        .from("questions")
-        .select(
-          "id, draft_of, published, text, type, points, image, position, quiz_id, choices(id, text, is_correct, image_url)"
-        )
-        .eq("id", originalId)
-        .maybeSingle();
+      const { data: updatedOriginal, error: updatedFetchErr } =
+        await supabaseAdmin
+          .from("questions")
+          .select(
+            "id, draft_of, published, text, type, points, image, position, quiz_id, choices(id, text, is_correct, image_url)"
+          )
+          .eq("id", originalId)
+          .maybeSingle();
       if (updatedFetchErr) {
         return Response.json(
           { error: "Failed to fetch updated original" },

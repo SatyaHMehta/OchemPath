@@ -6,7 +6,9 @@ export async function DELETE(req) {
     const url = new URL(req.url);
     const courseId = url.searchParams.get("course_id");
     if (!courseId) {
-      return new Response(JSON.stringify({ error: "course_id required" }), { status: 400 });
+      return new Response(JSON.stringify({ error: "course_id required" }), {
+        status: 400,
+      });
     }
     const { error, count } = await supabaseAdmin
       .from("chapters")
@@ -14,8 +16,12 @@ export async function DELETE(req) {
       .eq("course_id", courseId)
       .not("draft_of", "is", null);
     if (error) throw error;
-    return new Response(JSON.stringify({ deleted: count || 0 }), { status: 200 });
+    return new Response(JSON.stringify({ deleted: count || 0 }), {
+      status: 200,
+    });
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
+    return new Response(JSON.stringify({ error: String(err) }), {
+      status: 500,
+    });
   }
 }

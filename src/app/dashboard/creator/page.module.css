@@ -459,6 +459,12 @@
   border-bottom-color: #33d17a;
 }
 
+.questionCount {
+  font-size: 12px;
+  opacity: 0.7;
+  font-weight: normal;
+}
+
 .detailsForm {
   padding: 32px;
   flex: 1;
