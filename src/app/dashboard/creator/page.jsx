@@ -957,7 +957,8 @@ function CourseManager({ course, onBack, onSelectChapter }) {
   };
 
   const publishAllDrafts = async () => {
-    const draftQuestions = practiceQuestions.filter((q) => q.draft_of);
+    // Treat any unpublished question as a draft (includes linked drafts and standalone duplicates)
+    const draftQuestions = practiceQuestions.filter((q) => !q.published);
 
     if (draftQuestions.length === 0) {
       setValidationMessage("No draft questions to publish.");
@@ -1981,16 +1982,16 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                 <div className={styles.questionsHeader}>
                   <h3>Practice Quiz</h3>
                   <div className={styles.questionHeaderActions}>
-                    {practiceQuestions.filter((q) => q.draft_of).length > 1 && (
+                    {practiceQuestions.filter((q) => !q.published).length > 1 && (
                       <button
                         className={styles.publishAllBtn}
                         onClick={publishAllDrafts}
                         title={`Publish ${
-                          practiceQuestions.filter((q) => q.draft_of).length
+                          practiceQuestions.filter((q) => !q.published).length
                         } draft questions`}
                       >
                         Publish All Drafts (
-                        {practiceQuestions.filter((q) => q.draft_of).length})
+                        {practiceQuestions.filter((q) => !q.published).length})
                       </button>
                     )}
 

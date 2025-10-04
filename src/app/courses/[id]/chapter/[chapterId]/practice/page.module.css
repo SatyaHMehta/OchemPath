@@ -10,11 +10,13 @@
   gap:24px;
   padding:28px;
   color:#e6fff9;
-  min-height:calc(100vh - 80px);
+  /* Lock the page height so the inner list scrolls instead of the page */
+  height:calc(100vh - 80px);
+  overflow:hidden;
   background:linear-gradient(180deg, rgba(13,17,19,1), rgba(7,9,11,1));
 }
 
-.leftCol{ flex:1 1 720px; max-width:900px; }
+.leftCol{ flex:1 1 720px; max-width:900px; display:flex; flex-direction:column; height:100%; }
 .sidebar{ width:320px; display:flex; flex-direction:column; gap:16px; }
 
 .headerRow{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:12px; }
@@ -25,7 +27,13 @@
 .progressBar{ width:100%; height:10px; background:rgba(255,255,255,0.04); border-radius:999px; overflow:hidden; }
 .progress{ height:100%; background:linear-gradient(90deg,#76f2b0,#2bb07e); border-radius:999px; }
 
-.practice{ margin-top:8px; }
+.practice{ margin-top:8px; display:flex; flex-direction:column; min-height:0; }
+.scrollArea{ flex:1 1 auto; min-height:0; overflow:auto; padding-right:4px; scrollbar-width: thin; scrollbar-color: rgba(51,209,122,0.35) rgba(255,255,255,0.05); overscroll-behavior: contain; }
+/* Themed scrollbar for Chromium/WebKit */
+.scrollArea::-webkit-scrollbar{ width:10px; height:10px; }
+.scrollArea::-webkit-scrollbar-track{ background: rgba(255,255,255,0.03); border-radius:10px; }
+.scrollArea::-webkit-scrollbar-thumb{ background: linear-gradient(180deg, rgba(51,209,122,0.35), rgba(31,189,122,0.35)); border: 1px solid rgba(255,255,255,0.06); border-radius:10px; }
+.scrollArea::-webkit-scrollbar-thumb:hover{ background: linear-gradient(180deg, rgba(51,209,122,0.55), rgba(31,189,122,0.55)); }
 .questionCard{ background: rgba(255,255,255,0.02); border-radius:12px; padding:20px 18px 22px; box-shadow:0 8px 24px rgba(0,0,0,0.6); min-height: var(--question-min-height); }
 .qText{ font-size:17px; font-weight:600; color:#e6fff9; margin-top:4px; }
 .questionsList{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:16px; }

@@ -150,15 +150,9 @@ export default function PracticePage({ params }) {
   };
   const check = () => setChecked(true);
 
-  const score = () => {
-    let correct = 0;
-    (questions || []).forEach((q) => {
-      if (answers[q.id] === q.correctIndex) correct += 1;
-    });
-    return { correct, total: (questions || []).length };
-  };
-
-  const progress = (score().correct / Math.max(1, score().total)) * 100;
+  const total = (questions || []).length;
+  const answeredCount = Object.keys(answers).length;
+  const progress = (answeredCount / Math.max(1, total)) * 100;
 
   return (
     <div className={styles.container}>
@@ -169,7 +163,7 @@ export default function PracticePage({ params }) {
           </h1>
           <div className={styles.scoreBox}>
             <div className={styles.scoreText}>
-              Score: <strong>{`${score().correct} / ${score().total}`}</strong>
+              Answered: <strong>{answeredCount} / {total}</strong>
             </div>
             <div className={styles.progressBar}>
               <div
@@ -181,6 +175,7 @@ export default function PracticePage({ params }) {
         </div>
 
         <section className={styles.practice}>
+          <div className={styles.scrollArea}>
           <ol className={styles.questionsList}>
             {(questions || []).map((q) => (
               <li key={q.id} className={styles.questionCard}>
@@ -265,6 +260,7 @@ export default function PracticePage({ params }) {
               </li>
             ))}
           </ol>
+          </div>
 
           <div className={styles.actionsRow}>
             <button
