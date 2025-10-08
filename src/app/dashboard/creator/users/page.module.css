@@ -1,0 +1,224 @@
+/* Users page styles (creator) */
+
+.container {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 16px;
+  padding: 16px;
+  color: #c9d1d9;
+}
+
+.header {
+  grid-column: 1 / -1;
+  margin-bottom: 8px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.subtitle {
+  opacity: 0.7;
+  font-size: 12px;
+}
+
+.controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.search {
+  flex: 1;
+}
+
+.search input {
+  width: 100%;
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: inherit;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+.filters {
+  display: flex;
+  gap: 8px;
+}
+
+.chip {
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.chip:hover { background: #30363d; }
+.chipActive {
+  background: rgba(51, 209, 122, 0.12);
+  border-color: #33d17a;
+  color: #33d17a;
+}
+
+.panel {
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 60vh;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border-bottom: 1px solid #30363d;
+  background: #30363d;
+}
+
+.tableHead, .row {
+  display: grid;
+  grid-template-columns: 40px 1.2fr 0.8fr 0.8fr 0.6fr 0.6fr 0.6fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.tableHead {
+  font-size: 12px;
+  opacity: 0.85;
+  padding: 10px 12px;
+  border-bottom: 1px solid #30363d;
+  background: #30363d;
+}
+
+.list {
+  overflow: auto;
+}
+
+.row {
+  padding: 10px 12px;
+  border-bottom: 1px solid #30363d;
+  cursor: pointer;
+}
+.row:hover { background: #3d444d; }
+.rowSelected { background: rgba(51, 209, 122, 0.12); }
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #30363d;
+  font-size: 12px;
+  border: 1px solid #30363d;
+}
+
+.nameCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.badge {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  border: 1px solid #30363d;
+}
+
+.badgeStudent { background: rgba(34,197,94,0.08); color: #86efac; border-color: rgba(34,197,94,0.25); }
+.badgeProfessor { background: rgba(59,130,246,0.08); color: #93c5fd; border-color: rgba(59,130,246,0.25); }
+.badgeAdmin { background: rgba(234,179,8,0.08); color: #fde68a; border-color: rgba(234,179,8,0.25); }
+.badgeGuest { background: rgba(148,163,184,0.08); color: #cbd5e1; border-color: rgba(148,163,184,0.25); }
+.badgeTA { background: rgba(147,51,234,0.08); color: #d8b4fe; border-color: rgba(147,51,234,0.25); }
+
+.statusActive { color: #86efac; }
+.statusInactive { color: #fca5a5; }
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+
+.section {
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+}
+
+.sectionHeader {
+  padding: 10px 12px;
+  border-bottom: 1px solid #30363d;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sectionBody {
+  padding: 10px 12px;
+}
+
+.activityItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px dashed #30363d;
+  padding: 10px 0;
+}
+
+.stickyBar {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid #30363d;
+  background: #161b22;
+}
+
+.btn {
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.btn:hover { background: #30363d; }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.btnPrimary {
+  background: #238636;
+  border-color: #238636;
+  color: #ffffff;
+}
+.btnPrimary:hover { background: #2ea043; }
+
+.small { font-size: 12px; opacity: 0.8; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+/* Themed scrollbar (align with creator questions list) */
+.list::-webkit-scrollbar { width: 10px; }
+.list::-webkit-scrollbar-track { background: #161b22; }
+.list::-webkit-scrollbar-thumb { background-color: #30363d; border-radius: 10px; border: 2px solid #161b22; }

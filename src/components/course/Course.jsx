@@ -2,7 +2,6 @@
 import React from "react";
 import styles from "./course.module.css";
 import Image from "next/image";
-import Button from "@/components/button/Button";
 import { useRouter } from "next/navigation";
 
 const Course = ({ name, description, image, url }) => {
@@ -36,8 +35,7 @@ const Course = ({ name, description, image, url }) => {
         </div>
         <div className={styles.descriptionContainer}>
           <p className={styles.description}>{description}</p>
-          {/* Sample quiz route used here; clicking the button shouldn't trigger the whole card navigation */}
-          <Button url="/quiz" text="Free Quiz Trial!" />
+          {/* Removed legacy Free Quiz Trial button to /quiz */}
         </div>
       </div>
     </div>

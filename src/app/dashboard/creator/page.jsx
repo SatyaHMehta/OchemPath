@@ -1,10 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import UsersPage from "./users/page";
 import styles from "./page.module.css";
 import ImageUpload from "@/components/ImageUpload/ImageUpload";
 
 export default function CreatorDashboard() {
+  const router = useRouter();
   const [activeView, setActiveView] = useState("overview");
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [selectedChapter, setSelectedChapter] = useState(null);
@@ -59,8 +62,8 @@ export default function CreatorDashboard() {
             <li>
               <button>Questions</button>
             </li>
-            <li>
-              <button>Users</button>
+            <li className={activeView === "users" ? styles.active : ""}>
+              <button onClick={() => setActiveView("users")}>Users</button>
             </li>
             <li>
               <button>Assignments</button>
@@ -104,7 +107,7 @@ export default function CreatorDashboard() {
                 <h1>{selectedCourse.title} — Course Manager</h1>
               </>
             ) : (
-              <h1>Courses</h1>
+              <h1>{activeView === "users" ? "Users" : "Courses"}</h1>
             )}
           </div>
           <div className={styles.headerRight}>
@@ -142,6 +145,13 @@ export default function CreatorDashboard() {
             />
           )
         ) : null}
+
+        {activeView === "users" && (
+          <div className={styles.coursesOverview}>
+            {/* Reuse existing content area spacing/styles */}
+            <UsersPage />
+          </div>
+        )}
       </main>
     </div>
   );
@@ -1982,7 +1992,8 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                 <div className={styles.questionsHeader}>
                   <h3>Practice Quiz</h3>
                   <div className={styles.questionHeaderActions}>
-                    {practiceQuestions.filter((q) => !q.published).length > 1 && (
+                    {practiceQuestions.filter((q) => !q.published).length >
+                      1 && (
                       <button
                         className={styles.publishAllBtn}
                         onClick={publishAllDrafts}

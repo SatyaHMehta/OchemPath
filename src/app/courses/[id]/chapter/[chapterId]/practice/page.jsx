@@ -163,7 +163,10 @@ export default function PracticePage({ params }) {
           </h1>
           <div className={styles.scoreBox}>
             <div className={styles.scoreText}>
-              Answered: <strong>{answeredCount} / {total}</strong>
+              Answered:{" "}
+              <strong>
+                {answeredCount} / {total}
+              </strong>
             </div>
             <div className={styles.progressBar}>
               <div
@@ -176,90 +179,96 @@ export default function PracticePage({ params }) {
 
         <section className={styles.practice}>
           <div className={styles.scrollArea}>
-          <ol className={styles.questionsList}>
-            {(questions || []).map((q) => (
-              <li key={q.id} className={styles.questionCard}>
-                <div className={styles.qIndex}>Question</div>
+            <ol className={styles.questionsList}>
+              {(questions || []).map((q) => (
+                <li key={q.id} className={styles.questionCard}>
+                  <div className={styles.qIndex}>Question</div>
 
-                {q.image && (
-                  <div className={styles.qImage}>
-                    <img
-                      src={q.image}
-                      alt={`question-${q.id}`}
-                      role="button"
-                      tabIndex={0}
-                      crossOrigin="anonymous"
-                      onClick={() => setZoomImage(q.image)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ")
-                          setZoomImage(q.image);
-                      }}
-                      onError={(e) => {
-                        console.error("Image failed to load:", q.image);
-                        e.target.style.display = "none"; // Hide broken image
-                      }}
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <div className={styles.qText}>{q.text}</div>
-                  <div className={styles.optionsGrid}>
-                    {q.options.map((opt, idx) => {
-                      const chosen = answers[q.id] === idx;
-                      const isCorrect = q.correctIndex === idx;
-                      const showCorrect = checked && isCorrect;
-                      const showWrong = checked && chosen && !isCorrect;
-                      const cls = [styles.optButton];
-                      if (chosen) cls.push(styles.optSelected);
-                      if (showCorrect) cls.push(styles.optCorrect);
-                      if (showWrong) cls.push(styles.optWrong);
-
-                      const optionText =
-                        typeof opt === "string" ? opt : opt.text;
-                      const optionImage =
-                        typeof opt === "object" ? opt.image : null;
-
-                      return (
-                        <button
-                          key={idx}
-                          className={cls.join(" ")}
-                          onClick={() => select(q.id, idx)}
-                          type="button"
-                        >
-                          <span className={styles.optLabel}>{optionText}</span>
-                          {optionImage && (
-                            <div className={styles.optImage}>
-                              <img
-                                src={optionImage}
-                                alt={`Option ${String.fromCharCode(65 + idx)}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setZoomImage(optionImage);
-                                }}
-                              />
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {checked && (
-                    <div className={styles.feedback}>
-                      {answers[q.id] === q.correctIndex ? (
-                        <span className={styles.feedbackCorrect}>Correct.</span>
-                      ) : (
-                        <span className={styles.feedbackWrong}>
-                          Not quite. The correct answer is highlighted.
-                        </span>
-                      )}
+                  {q.image && (
+                    <div className={styles.qImage}>
+                      <img
+                        src={q.image}
+                        alt={`question-${q.id}`}
+                        role="button"
+                        tabIndex={0}
+                        crossOrigin="anonymous"
+                        onClick={() => setZoomImage(q.image)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ")
+                            setZoomImage(q.image);
+                        }}
+                        onError={(e) => {
+                          console.error("Image failed to load:", q.image);
+                          e.target.style.display = "none"; // Hide broken image
+                        }}
+                      />
                     </div>
                   )}
-                </div>
-              </li>
-            ))}
-          </ol>
+
+                  <div>
+                    <div className={styles.qText}>{q.text}</div>
+                    <div className={styles.optionsGrid}>
+                      {q.options.map((opt, idx) => {
+                        const chosen = answers[q.id] === idx;
+                        const isCorrect = q.correctIndex === idx;
+                        const showCorrect = checked && isCorrect;
+                        const showWrong = checked && chosen && !isCorrect;
+                        const cls = [styles.optButton];
+                        if (chosen) cls.push(styles.optSelected);
+                        if (showCorrect) cls.push(styles.optCorrect);
+                        if (showWrong) cls.push(styles.optWrong);
+
+                        const optionText =
+                          typeof opt === "string" ? opt : opt.text;
+                        const optionImage =
+                          typeof opt === "object" ? opt.image : null;
+
+                        return (
+                          <button
+                            key={idx}
+                            className={cls.join(" ")}
+                            onClick={() => select(q.id, idx)}
+                            type="button"
+                          >
+                            <span className={styles.optLabel}>
+                              {optionText}
+                            </span>
+                            {optionImage && (
+                              <div className={styles.optImage}>
+                                <img
+                                  src={optionImage}
+                                  alt={`Option ${String.fromCharCode(
+                                    65 + idx
+                                  )}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setZoomImage(optionImage);
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {checked && (
+                      <div className={styles.feedback}>
+                        {answers[q.id] === q.correctIndex ? (
+                          <span className={styles.feedbackCorrect}>
+                            Correct.
+                          </span>
+                        ) : (
+                          <span className={styles.feedbackWrong}>
+                            Not quite. The correct answer is highlighted.
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ol>
           </div>
 
           <div className={styles.actionsRow}>

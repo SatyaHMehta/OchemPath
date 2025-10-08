@@ -22,6 +22,17 @@ const Login = () => {
     });
     setLoading(false);
     if (error) return setError(error.message);
+    try {
+      const user = data?.user;
+      if (user?.id) {
+        await supabase
+          .from("profiles")
+          .update({ last_login: new Date().toISOString() })
+          .eq("id", user.id);
+      }
+    } catch (e) {
+      console.warn("Could not update last_login", e?.message || e);
+    }
     router.push("/dashboard");
   };
 
@@ -35,6 +46,24 @@ const Login = () => {
         </p>
 
         <form onSubmit={handleSubmit} className={styles.form}>
+          <button
+            type="button"
+            className={styles.button}
+            onClick={async () => {
+              try {
+                const { error } = await supabase.auth.signInWithOAuth({
+                  provider: "google",
+                  options: { redirectTo: `${window.location.origin}/dashboard` },
+                });
+                if (error) setError(error.message);
+              } catch (e) {
+                setError(e?.message || "Google sign-in failed");
+              }
+            }}
+            style={{ marginBottom: 10 }}
+          >
+            Continue with Google
+          </button>
           <input
             type="email"
             placeholder="Email"
