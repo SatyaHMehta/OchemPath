@@ -5,6 +5,7 @@ import styles from "./page.module.css";
 import supabase from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import UniversitySelect from "@/components/university-select/UniversitySelect";
+import { getSiteUrl } from "@/utils/siteUrl";
 
 const Register = () => {
   const [email, setEmail] = useState("");
@@ -122,7 +123,7 @@ const Register = () => {
                 const { error } = await supabase.auth.signInWithOAuth({
                   provider: "google",
                   options: {
-                    redirectTo: `${window.location.origin}/dashboard`,
+                    redirectTo: `${getSiteUrl()}/dashboard`,
                   },
                 });
                 if (error) setError(error.message);

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import styles from "./page.module.css";
 import supabase from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
+import { getSiteUrl } from "@/utils/siteUrl";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -53,7 +54,7 @@ const Login = () => {
               try {
                 const { error } = await supabase.auth.signInWithOAuth({
                   provider: "google",
-                  options: { redirectTo: `${window.location.origin}/dashboard` },
+                  options: { redirectTo: `${getSiteUrl()}/dashboard` },
                 });
                 if (error) setError(error.message);
               } catch (e) {
