@@ -2176,7 +2176,16 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                           </div>
 
                           <div className={styles.questionMenu}>
-                            <button className={styles.moreBtn}>⋯</button>
+                            <button
+                              className={styles.deleteBtn}
+                              title="Delete question"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteQuestion(question);
+                              }}
+                            >
+                              ×
+                            </button>
                           </div>
                         </div>
                       ))
@@ -2443,14 +2452,6 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                 {editingQuestion && (
                   <div className={styles.questionFormActions}>
                     <button
-                      className={styles.deleteQuestionBtn}
-                      onClick={() => {
-                        if (selectedQuestion) deleteQuestion(selectedQuestion);
-                      }}
-                    >
-                      Delete
-                    </button>
-                    <button
                       className={styles.saveDraftBtn}
                       onClick={cancelQuestionEdit}
                     >
@@ -2666,7 +2667,16 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                             </div>
                           </div>
                           <div className={styles.questionMenu}>
-                            <button className={styles.moreBtn}>⋯</button>
+                            <button
+                              className={styles.deleteBtn}
+                              title="Delete question"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteQuizQuestion(question);
+                              }}
+                            >
+                              ×
+                            </button>
                           </div>
                         </div>
                       ))
@@ -2928,15 +2938,6 @@ function CourseManager({ course, onBack, onSelectChapter }) {
                 </div>
                 {quizEditingQuestion && (
                   <div className={styles.questionFormActions}>
-                    <button
-                      className={styles.deleteQuestionBtn}
-                      onClick={() => {
-                        if (quizSelectedQuestion)
-                          deleteQuizQuestion(quizSelectedQuestion);
-                      }}
-                    >
-                      Delete
-                    </button>
                     <button
                       className={styles.saveDraftBtn}
                       onClick={cancelQuizQuestionEdit}

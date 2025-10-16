@@ -74,12 +74,21 @@ export async function PUT(req, { params }) {
 export async function DELETE(req, { params }) {
   try {
     const { id } = params;
-    // delete choices first
+    // Delete answers first (students' responses to this question)
+    const { error: delAnswersErr } = await supabaseAdmin
+      .from("answers")
+      .delete()
+      .eq("question_id", id);
+    if (delAnswersErr) throw delAnswersErr;
+
+    // Then delete choices
     const { error: delChoicesErr } = await supabaseAdmin
       .from("choices")
       .delete()
       .eq("question_id", id);
     if (delChoicesErr) throw delChoicesErr;
+
+    // Finally delete the question
     const { error: delQErr } = await supabaseAdmin
       .from("questions")
       .delete()

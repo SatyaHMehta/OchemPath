@@ -1,0 +1,108 @@
+.shell {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 16px;
+  padding: 16px;
+  color: #e6e7ea;
+}
+
+.sidebar {
+  background: #0b0e12;
+  border: 1px solid #161b22;
+  border-radius: 12px;
+  padding: 12px;
+  height: calc(100vh - 32px);
+  position: sticky;
+  top: 16px;
+}
+.brand {
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.sideNav { display: flex; flex-direction: column; gap: 8px; }
+.sideItem {
+  background: #0e1117;
+  border: 1px solid #1b2432;
+  color: inherit;
+  padding: 10px 12px;
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+}
+.sideItemActive { border-color: #2ea043; background: #111b14; }
+.soon { margin-left: 8px; font-size: 11px; opacity: 0.7; }
+
+.content { display: flex; flex-direction: column; gap: 16px; }
+
+.header {
+  background: #0b0e12;
+  border: 1px solid #161b22;
+  border-radius: 12px;
+  padding: 14px;
+}
+.welcome { display: flex; align-items: center; gap: 12px; }
+.avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #0e1117; border: 1px solid #1b2432; font-weight: 700; font-size: 13px;
+}
+.welcomeTitle { font-weight: 700; }
+.welcomeSub { opacity: 0.8; font-size: 12px; }
+
+.topGrid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+.card {
+  background: #0b0e12;
+  border: 1px solid #161b22;
+  border-radius: 12px;
+  padding: 14px;
+}
+.sectionTitle { font-weight: 600; margin-bottom: 10px; }
+
+.courseRow { display: grid; grid-template-columns: 260px 1fr; gap: 12px; }
+.mediaPlaceholder { height: 160px; background: #0e1117; border: 1px solid #1b2432; border-radius: 8px; }
+.courseTitle { font-weight: 700; }
+.courseSubtitle { opacity: 0.8; font-size: 12px; margin: 4px 0 8px; }
+.progressBar { height: 8px; background: #0e1117; border: 1px solid #1b2432; border-radius: 999px; overflow: hidden; }
+.progressInner { height: 100%; background: #2ea043; }
+.actionRow { display: flex; gap: 8px; margin: 10px 0; }
+.btn { background: #0e1117; border: 1px solid #1b2432; color: inherit; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.btnPrimary { background: #1a2234; border-color: #334155; }
+.nextUp { opacity: 0.9; font-size: 12px; }
+.nextUp ul { margin: 6px 0 0 18px; }
+
+.streakDots { display: flex; gap: 6px; margin-bottom: 12px; }
+.dot { width: 14px; height: 14px; border-radius: 4px; background: #0e1117; border: 1px solid #1b2432; display: inline-block; }
+.dot[data-on] { background: #2ea043; border-color: #2ea043; }
+
+.kvRow { display: grid; grid-template-columns: 120px 1fr; gap: 10px; }
+.kvLabel { font-size: 12px; opacity: 0.8; }
+.kvBars { display: flex; flex-direction: column; gap: 10px; }
+.kvName { font-size: 12px; opacity: 0.9; margin-bottom: 6px; }
+.kvBar { height: 8px; background: #0e1117; border: 1px solid #1b2432; border-radius: 999px; overflow: hidden; }
+.kvBar span { display: block; height: 100%; background: #2ea043; }
+
+.activityList { display: flex; flex-direction: column; }
+.activityRow { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px dashed #161b22; }
+.activityRow:last-child { border-bottom: 0; }
+.activityTitle { font-weight: 600; }
+.activityMeta { font-size: 12px; opacity: 0.8; }
+.activityWhen { font-size: 12px; opacity: 0.8; }
+
+.comingSoonWrap { display: flex; align-items: center; justify-content: center; min-height: 40vh; }
+.comingSoonCard { background: #0b0e12; border: 1px solid #161b22; border-radius: 12px; padding: 20px; text-align: center; }
+.comingSoonTitle { font-weight: 700; margin-bottom: 6px; }
+.comingSoonSubtitle { opacity: 0.8; }
+
+@media (max-width: 980px) {
+  .shell { grid-template-columns: 1fr; }
+  .sidebar { position: static; height: auto; }
+  .topGrid { grid-template-columns: 1fr; }
+  .courseRow { grid-template-columns: 1fr; }
+}
+
+/* Progress UI helpers */
+.select { background:#0e1117; border:1px solid #1b2432; color:inherit; padding:8px 10px; border-radius:8px; width:100%; }
+.subCard { background:#0e1117; border:1px solid #1b2432; border-radius:10px; }
+.attemptsList { display:flex; flex-direction:column; gap:8px; }
+.attemptRow { display:flex; align-items:center; justify-content:space-between; padding:6px 0; border-bottom:1px dashed #1b2432; }
+.attemptRow:last-child { border-bottom:0; }

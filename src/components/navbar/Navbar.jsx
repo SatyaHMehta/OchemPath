@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 const Navbar = () => {
   const [session, setSession] = useState(null);
   const [displayName, setDisplayName] = useState("");
+  const [userRole, setUserRole] = useState("");
   const router = useRouter();
 
   useEffect(() => {
@@ -75,6 +76,7 @@ const Navbar = () => {
         user.email ||
         "";
       setDisplayName(dn);
+      if (prof?.role) setUserRole(prof.role);
     } catch (e) {
       console.warn("load profile failed", e?.message || e);
       setDisplayName(session?.user?.email || "");
@@ -90,8 +92,29 @@ const Navbar = () => {
   const links = [
     { id: 1, title: "Home", url: "/" },
     { id: 2, title: "Courses", url: "/courses" },
-    { id: 3, title: "Dashboard", url: "/dashboard/creator" },
   ];
+
+  // Always include a Creator dashboard link when signed in for dev ergonomics
+  if (session) {
+    links.push({
+      id: 3,
+      title: "Creator Dashboard",
+      url: "/dashboard/creator",
+    });
+    links.push({
+      id: 5,
+      title: "Student Dashboard",
+      url: "/dashboard/student",
+    });
+  }
+
+  // If current user is admin (creator), expose all dashboards for testing
+  if (session && userRole === "admin") {
+    links.push(
+      { id: 6, title: "Professor Dashboard", url: "/dashboard/professor" },
+      { id: 7, title: "Developer", url: "/dashboard/developer" }
+    );
+  }
 
   return (
     <div className={styles.container}>

@@ -27,8 +27,8 @@ BEGIN
 
     -- Insert 3 questions with 4 choices each
     FOR i IN 1..3 LOOP
-  INSERT INTO questions (quiz_id, position, text, type, points)
-  VALUES (v_quiz_id, i, format('Auto question %s for chapter %s', i, chap.position), 'multiple_choice', 1)
+  INSERT INTO questions (quiz_id, position, text, type, points, published)
+  VALUES (v_quiz_id, i, format('Auto question %s for chapter %s', i, chap.position), 'multiple_choice', 1, true)
   RETURNING id INTO qid;
 
       choice_texts := ARRAY[

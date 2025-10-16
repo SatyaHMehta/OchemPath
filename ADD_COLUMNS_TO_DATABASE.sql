@@ -1,27 +1,30 @@
--- IMPORTANT: Run these SQL commands in your Supabase SQL Editor
--- to add the missing columns to the questions table
+-- CRITICAL MIGRATIONS: Run these in Supabase SQL Editor
+-- These fix the quiz submission score storage issue
 
--- 1. Add the published column
-ALTER TABLE questions ADD COLUMN IF NOT EXISTS published boolean DEFAULT false;
+-- ============================================================================
+-- MIGRATION 022 (RUN FIRST): Add Missing Foreign Key
+-- ============================================================================
+-- This enables the grade API to JOIN answers with choices to check correctness
 
--- 2. Add the chapter_id column for direct practice questions
-ALTER TABLE questions ADD COLUMN IF NOT EXISTS chapter_id uuid REFERENCES chapters(id) ON DELETE CASCADE;
+ALTER TABLE IF EXISTS answers
+ADD CONSTRAINT fk_answers_choice_id 
+  FOREIGN KEY (choice_id) REFERENCES choices(id) ON DELETE SET NULL;
 
--- 3. Add the is_practice column
-ALTER TABLE questions ADD COLUMN IF NOT EXISTS is_practice boolean DEFAULT false;
+CREATE INDEX IF NOT EXISTS idx_answers_choice_id ON answers(choice_id);
 
--- 4. Add helpful comments
-COMMENT ON COLUMN questions.published IS 'Whether the question is published and visible to students';
-COMMENT ON COLUMN questions.chapter_id IS 'Direct reference to chapter for practice questions (optional)';
-COMMENT ON COLUMN questions.is_practice IS 'Whether this is a practice question (true) or quiz question (false)';
+-- ============================================================================
+-- MIGRATION 019 (RUN SECOND): Publish Seeded Questions
+-- ============================================================================
+-- This makes questions visible on quiz pages (quiz API filters for published = true)
 
--- 5. Create index for better performance
-CREATE INDEX IF NOT EXISTS idx_questions_chapter_practice ON questions(chapter_id, is_practice, published);
+UPDATE questions
+SET published = true
+WHERE published = false
+  AND text LIKE 'Auto question%';
 
--- 6. Optional: Set existing questions to published (if you want them visible)
--- UPDATE questions SET published = true WHERE published IS NULL;
+-- ============================================================================
+-- MIGRATION 021 (OPTIONAL): Clean Up Mock Users
+-- ============================================================================
+-- Remove the mock_users table if you're using real users only
 
--- 7. Optional: Mark existing practice questions
--- UPDATE questions SET is_practice = true WHERE quiz_id IN (
---   SELECT id FROM quizzes WHERE is_practice = true OR title ILIKE '%practice%'
--- );
+-- DROP TABLE IF EXISTS public.mock_users CASCADE;

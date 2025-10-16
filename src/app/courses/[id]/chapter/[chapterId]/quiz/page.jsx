@@ -57,6 +57,13 @@ export default function QuizPage({ params }) {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const user_id = sessionData?.session?.user?.id || null;
+      if (!user_id) {
+        setResult({
+          error:
+            "You must be logged in to submit a quiz. Please sign in and try again.",
+        });
+        return;
+      }
       const body = {
         quiz_id: quiz.id,
         user_id,
@@ -71,13 +78,24 @@ export default function QuizPage({ params }) {
         body: JSON.stringify(body),
         headers: { "content-type": "application/json" },
       });
-      if (!res.ok) return setResult({ error: "Submission failed" });
+      if (!res.ok) {
+        const err = await res.text();
+        console.error("Submission error:", err);
+        return setResult({ error: "Submission failed" });
+      }
       const data = await res.json();
-      await fetch("/api/grade", {
+
+      const gradeRes = await fetch("/api/grade", {
         method: "POST",
         body: JSON.stringify({ submission_id: data.submission.id }),
         headers: { "content-type": "application/json" },
       });
+      const gradeData = await gradeRes.json();
+      if (!gradeRes.ok) {
+        console.error("Grading failed:", gradeData.error);
+        return setResult({ error: "Grading failed: " + gradeData.error });
+      }
+
       setResult({ success: true });
       setChecked(true);
     } catch (e) {

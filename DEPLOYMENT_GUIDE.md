@@ -1,4 +1,4 @@
-# OchemPath Deployment Guide
+# Deployment Guide: How to Apply Migrations
 
 ## Quick Deployment to Vercel (Recommended)
 

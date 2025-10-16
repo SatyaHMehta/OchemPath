@@ -1433,6 +1433,21 @@
   color: #c9d1d9;
 }
 
+.questionMenu .deleteBtn {
+  padding: 4px 8px;
+  font-size: 18px;
+  font-weight: bold;
+  border: none;
+  background: none;
+  color: #da3633;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.questionMenu .deleteBtn:hover {
+  color: #ff6b6b;
+}
+
 
 
 .questionForm {
